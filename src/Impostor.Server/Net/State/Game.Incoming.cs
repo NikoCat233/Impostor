@@ -120,7 +120,7 @@ namespace Impostor.Server.Net.State
 
         private async ValueTask HandleJoinGameNewAsync(ClientPlayer sender, bool isNew)
         {
-            _logger.LogInformation("{0} - Player {1} ({2}) is joining from ({3})", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port);
+            _logger.LogInformation("{0} - Player {1} ({2}) is joining from ({3}) with v{4}, Authority:{5}", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
 
             // Add player to the game.
             if (isNew)

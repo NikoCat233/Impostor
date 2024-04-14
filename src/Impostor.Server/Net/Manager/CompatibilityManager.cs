@@ -175,7 +175,8 @@ internal class CompatibilityManager : ICompatibilityManager
         }
     }
 
-    public bool RemoveSupportedVersion(GameVersion removedVersion)
+    public bool RemoveSupportedVersion(GameVersion 
+        Version)
     {
         if (_supportMap.Remove(removedVersion, out var compatibilityGroup))
         {
