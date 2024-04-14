@@ -8,6 +8,12 @@
         "resolved": "6.0.0",
         "contentHash": "tW3lsNS+dAEII6YGUX/VMoJjBS1QvsxqJeqLaJXub08y1FSjasFPtQ4UBUsudE9PNrzLjooClMsPtY2cZLdXpQ=="
       },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[8.0.2, )",
+        "resolved": "8.0.2",
+        "contentHash": "hKTrehpfVzOhAz0mreaTAZgbz0DrMEbWq4n3hAo8Ks6WdxdqQhNPvzOqn9VygKuWf1bmxPdraqzTaXriO/sn0A=="
+      },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[17.8.0, )",
@@ -538,7 +544,7 @@
       "impostor.server": {
         "type": "Project",
         "dependencies": {
-          "Impostor.Api": "[1.9.0-dev, )",
+          "Impostor.Api": "[1.9.1-dev, )",
           "Impostor.Hazel": "[1.0.0, )",
           "Microsoft.Extensions.FileSystemGlobbing": "[8.0.0, )",
           "Microsoft.Extensions.Hosting": "[8.0.0, )",
@@ -547,6 +553,18 @@
           "Serilog.Settings.Configuration": "[8.0.0, )",
           "Serilog.Sinks.Console": "[5.0.1, )"
         }
+      }
+    },
+    "net8.0/linux-x64": {
+      "System.Diagnostics.EventLog": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "fdYxcRjQqTTacKId/2IECojlDSFvp7LP5N78+0z/xH7v/Tuw5ZAxu23Y6PTCRinqyu2ePx+Gn1098NC6jM6d+A=="
+      },
+      "System.Text.Encodings.Web": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "yev/k9GHAEGx2Rg3/tU6MQh4HGBXJs70y7j1LaM1i/ER9po+6nnQ6RRqTJn1E7Xu0fbIFK80Nh5EoODxrbxwBQ=="
       }
     }
   }

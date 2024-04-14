@@ -82,7 +82,7 @@ namespace Impostor.Server.Net
                 return false;
             }
 
-            _logger.LogWarning("Client {Name} ({Id}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, context.Name, category, message);
+            _logger.LogWarning("Client {Name} ({Id}) ({Ip}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, context.Name, category, message);
 
             if (_antiCheatConfig.BanIpFromGame)
             {

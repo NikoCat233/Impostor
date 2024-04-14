@@ -115,7 +115,7 @@ namespace Impostor.Server.Net.State
                 GameState = GameStates.NotStarted;
 
                 // Spawn the host.
-                await HandleJoinGameNew(host, false);
+                await HandleJoinGameNewAsync(host, false);
 
                 // Pull players out of limbo.
                 await CheckLimboPlayers();

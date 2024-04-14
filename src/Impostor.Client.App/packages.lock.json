@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net8.0": {
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[8.0.2, )",
+        "resolved": "8.0.2",
+        "contentHash": "hKTrehpfVzOhAz0mreaTAZgbz0DrMEbWq4n3hAo8Ks6WdxdqQhNPvzOqn9VygKuWf1bmxPdraqzTaXriO/sn0A=="
+      },
       "Serilog.Sinks.Console": {
         "type": "Direct",
         "requested": "[5.0.1, )",
@@ -141,10 +147,11 @@
       "impostor.client": {
         "type": "Project",
         "dependencies": {
-          "Impostor.Api": "[1.9.0-dev, )",
+          "Impostor.Api": "[1.9.1-dev, )",
           "Impostor.Hazel": "[1.0.0, )"
         }
       }
-    }
+    },
+    "net8.0/linux-x64": {}
   }
 }

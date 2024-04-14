@@ -118,9 +118,9 @@ namespace Impostor.Server.Net.State
             return GameJoinResult.FromError(GameJoinError.InvalidClient);
         }
 
-        private async ValueTask HandleJoinGameNew(ClientPlayer sender, bool isNew)
+        private async ValueTask HandleJoinGameNewAsync(ClientPlayer sender, bool isNew)
         {
-            _logger.LogInformation("{0} - Player {1} ({2}) is joining.", Code, sender.Client.Name, sender.Client.Id);
+            _logger.LogInformation("{0} - Player {1} ({2}) is joining from ({3})", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port);
 
             // Add player to the game.
             if (isNew)
@@ -217,7 +217,7 @@ namespace Impostor.Server.Net.State
                 return @event.JoinResult.Value;
             }
 
-            await HandleJoinGameNew(player, isNew);
+            await HandleJoinGameNewAsync(player, isNew);
             return GameJoinResult.CreateSuccess(player);
         }
 
@@ -237,7 +237,7 @@ namespace Impostor.Server.Net.State
                 GameState = GameStates.NotStarted;
 
                 // Spawn the host.
-                await HandleJoinGameNew(sender, false);
+                await HandleJoinGameNewAsync(sender, false);
 
                 // Pull players out of limbo.
                 await CheckLimboPlayers();
