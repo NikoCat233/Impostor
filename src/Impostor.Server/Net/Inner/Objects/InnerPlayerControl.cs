@@ -111,6 +111,25 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             switch (call)
             {
+                // Exiled is no longer used in vanilla game
+                case RpcCalls.Exiled:
+                {
+                    if (!Game.IsHostAuthoritive)
+                    {
+                        if (await sender.Client.ReportCheatAsync(call, CheatCategory.ProtocolExtension, "Client tried to exile a player with rpc exiled"))
+                        {
+                            return false;
+                        }
+                    }
+
+                    if (!await ValidateHost(call, sender))
+                    {
+                        return false;
+                    }
+
+                    break;
+                }
+
                 case RpcCalls.PlayAnimation:
                 {
                     if (!await ValidateOwnership(call, sender))
@@ -312,14 +331,29 @@ namespace Impostor.Server.Net.Inner.Objects
                     break;
                 }
 
+                // Only sent by host with cast vote
                 case RpcCalls.SendChatNote:
                 {
+                    if (!await ValidateHost(call, sender))
+                    {
+                        return false;
+                    }
+
                     if (!await ValidateOwnership(call, sender))
                     {
                         return false;
                     }
 
                     Rpc16SendChatNote.Deserialize(reader, out var playerId, out var chatNoteType);
+
+                    if (chatNoteType != ChatNoteType.DidVote)
+                    {
+                        if (!await sender.Client.ReportCheatAsync(call, CheatCategory.ProtocolExtension, "Client tried to send chat note with invalid type"))
+                        {
+                            return false;
+                        }
+                    }
+
                     break;
                 }
 
@@ -973,6 +1007,19 @@ namespace Impostor.Server.Net.Inner.Objects
             if (!_game.IsHostAuthoritive)
             {
                 if (await sender.Client.ReportCheatAsync(RpcCalls.MurderPlayer, CheatCategory.GameFlow, "Client tried to murder directly"))
+                {
+                    return false;
+                }
+            }
+
+            if (Game.GameState != GameStates.Started)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.MurderPlayer, CheatCategory.GameFlow, "Client tried to murder out of game"))
+                {
+                    return false;
+                }
+
+                if (await sender.Client.ReportCheatAsync(RpcCalls.MurderPlayer, CheatCategory.ObviousGameFlow, "Client tried to murder out of game"))
                 {
                     return false;
                 }
