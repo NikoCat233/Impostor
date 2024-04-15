@@ -395,6 +395,7 @@ namespace Impostor.Server.Net
                 }
 
                 _logger.LogWarning("[{0}] Client sent packet only allowed by the host ({1}).", Id, game.HostId);
+
                 return false;
             }
 

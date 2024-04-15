@@ -116,7 +116,7 @@ namespace Impostor.Server.Net.State
             }
 
             HostId = host.Client.Id;
-            _logger.LogInformation("{0} - Assigned {1} ({2}) as new host. Authority : {3}", Code, host.Client.Name, host.Client.Id, host.Client.GameVersion.HasDisableServerAuthorityFlag);
+            _logger.LogInformation("{0} - Assigned {1} ({2}) as new host. Player Authority : {3}, Room Authority : {4}", Code, host.Client.Name, host.Client.Id, host.Client.GameVersion.HasDisableServerAuthorityFlag, IsHostAuthoritive);
 
             // Check our current game state.
             if (GameState == GameStates.Ended && host.Limbo == LimboStates.WaitingForHost)

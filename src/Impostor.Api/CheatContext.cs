@@ -16,5 +16,7 @@ namespace Impostor.Api
         public string Name { get; }
 
         public static implicit operator CheatContext(RpcCalls rpcCalls) => new CheatContext(rpcCalls.ToString());
+
+        public static implicit operator CheatContext(MessageType messageType) => new CheatContext(messageType.ToString());
     }
 }

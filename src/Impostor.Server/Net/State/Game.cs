@@ -92,13 +92,13 @@ namespace Impostor.Server.Net.State
 
         public IEnumerable<IClientPlayer> Players => _players.Select(p => p.Value);
 
-        public bool IsHostAuthoritive => Authoritive;
+        public bool IsHostAuthoritive => _authoritive;
 
         public bool ShouldHostAuthoritive => Host != null && Host.Client.GameVersion.HasDisableServerAuthorityFlag;
 
-        public bool Authoritive = false;
+        private bool _authoritive = false;
 
-        public bool DecidedAuthoritive = false;
+        private bool _decidedAuthoritive = false;
 
         internal GameNet GameNet { get; }
 

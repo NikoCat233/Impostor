@@ -24,6 +24,8 @@ namespace Impostor.Server.Net.State
             await SendToAllAsync(packet);
 
             await _eventManager.CallAsync(new GameStartingEvent(this));
+
+            _logger.LogInformation("Game {Code} started, Host is {Host}, Room Authority : {Authority}", Code, Host.Client.Name, IsHostAuthoritive);
         }
 
         public async ValueTask HandleEndGame(IMessageReader message, GameOverReason gameOverReason)
@@ -36,6 +38,8 @@ namespace Impostor.Server.Net.State
                 message.CopyTo(packet);
                 await SendToAllAsync(packet);
             }
+
+            _logger.LogInformation("Game {Code} ended, Host is {Host}, Room Authority : {Authority}", Code, Host.Client.Name, IsHostAuthoritive);
 
             // Put all players in the correct limbo state.
             foreach (var player in _players)
@@ -123,23 +127,23 @@ namespace Impostor.Server.Net.State
             _logger.LogInformation("{0} - Player {1} ({2}) is joining from ({3}) with v{4}, Authority:{5}", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
 
             // Should only happen on first player join(Host).
-            if (DecidedAuthoritive == false)
+            if (_decidedAuthoritive == false)
             {
                 if (sender.Client.GameVersion.HasDisableServerAuthorityFlag)
                 {
-                    Authoritive = true;
+                    _authoritive = true;
                     _logger.LogInformation("{0} - Enabled Authoritive by Player {1} ({2})", Code, sender.Client.Name, sender.Client.Id);
                 }
                 else
                 {
-                    Authoritive = false;
+                    _authoritive = false;
                     _logger.LogInformation("{0} - Run on Vanilla by Player {1} ({2})", Code, sender.Client.Name, sender.Client.Id);
                 }
 
-                DecidedAuthoritive = true;
+                _decidedAuthoritive = true;
             }
 
-            DecidedAuthoritive = true;
+            _decidedAuthoritive = true;
 
             // Add player to the game.
             if (isNew)
@@ -242,7 +246,7 @@ namespace Impostor.Server.Net.State
 
         private async ValueTask HandleJoinGameNext(ClientPlayer sender, bool isNew)
         {
-            _logger.LogInformation("{0} - Player {1} ({2}) is rejoining.", Code, sender.Client.Name, sender.Client.Id);
+            _logger.LogInformation("{0} - Player {1} ({2}) is rejoining. Player Authority : {3}", Code, sender.Client.Name, sender.Client.Id, sender.Client.GameVersion.HasDisableServerAuthorityFlag);
 
             // Add player to the game.
             if (isNew)
@@ -253,6 +257,7 @@ namespace Impostor.Server.Net.State
             // Check if the host joined and let everyone join.
             if (sender.Client.Id == HostId)
             {
+                _logger.LogInformation("{0} - Host {1} ({2}) rejoined. Room Authority : {3}", Code, sender.Client.Name, sender.Client.Id, IsHostAuthoritive);
                 GameState = GameStates.NotStarted;
 
                 // Spawn the host.
