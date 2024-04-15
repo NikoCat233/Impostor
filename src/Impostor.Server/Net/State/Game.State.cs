@@ -95,6 +95,14 @@ namespace Impostor.Server.Net.State
                 .Select(p => p.Value)
                 .FirstOrDefault();
 
+            if (IsHostAuthoritive)
+            {
+                host = _players
+                    .Where(p => p.Value.Client.GameVersion.HasDisableServerAuthorityFlag)
+                    .Select(p => p.Value)
+                    .FirstOrDefault();
+            }
+
             if (host == null)
             {
                 return;
