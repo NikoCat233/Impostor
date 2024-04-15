@@ -94,7 +94,7 @@ namespace Impostor.Server.Net
                 }
             }
 
-            var kickmessage = MessageWriter.Get(MessageType.Reliable);
+            var kickmessage = MessageWriter.Get();
 
             // Send message to everyone that this player was kicked.
             WriteRemovePlayerMessage(kickmessage, true, Player.Client.Id, DisconnectReason.Hacking);

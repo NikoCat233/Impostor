@@ -22,7 +22,7 @@ namespace Impostor.Server
                 return;
             }
 
-            using var writer = MessageWriter.Get(MessageType.Reliable);
+            using var writer = MessageWriter.Get();
             MessageDisconnect.Serialize(writer, true, reason, message);
 
             await connection.DisconnectAsync(reason.ToString(), writer);
