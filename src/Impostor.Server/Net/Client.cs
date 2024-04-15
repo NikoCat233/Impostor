@@ -44,9 +44,10 @@ namespace Impostor.Server.Net
 
             if (Player != null && Player.IsHost)
             {
-                var isHostCheatingAllowed = _antiCheatConfig.AllowCheatingHosts switch {
+                var isHostCheatingAllowed = _antiCheatConfig.AllowCheatingHosts switch
+                {
                     CheatingHostMode.Always => true,
-                    CheatingHostMode.IfRequested => GameVersion.HasDisableServerAuthorityFlag,
+                    CheatingHostMode.IfRequested => Player.Client.GameVersion.HasDisableServerAuthorityFlag && Player.Game.IsHostAuthoritive,
                     CheatingHostMode.Never => false,
                     _ => false,
                 };
@@ -85,7 +86,6 @@ namespace Impostor.Server.Net
 
             _logger.LogWarning("Client {Name} ({Id}) ({Ip}) Authority: ({Authority}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, Player.Client.GameVersion.HasDisableServerAuthorityFlag, context.Name, category, message);
 
-            var isBan = false;
             if (_antiCheatConfig.BanIpFromGame)
             {
                 if (!(_antiCheatConfig.NoBanAuthoritive && Player.Client.GameVersion.HasDisableServerAuthorityFlag))

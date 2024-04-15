@@ -1034,7 +1034,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
             if (await ValidateRole(RpcCalls.ProtectPlayer, sender, PlayerInfo, RoleTypes.GuardianAngel))
             {
-                    return false;
+                return false;
             }
 
             ((InnerPlayerControl)target).Protect(this);
