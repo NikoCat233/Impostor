@@ -67,6 +67,7 @@ namespace Impostor.Server.Net
             {
                 CheatCategory.ProtocolExtension => _antiCheatConfig.ForbidProtocolExtensions,
                 CheatCategory.GameFlow => _antiCheatConfig.EnableGameFlowChecks,
+                CheatCategory.ObviousGameFlow => _antiCheatConfig.EnableObviousChecks,
                 CheatCategory.MustBeHost => _antiCheatConfig.EnableMustBeHostChecks,
                 CheatCategory.ColorLimits => _antiCheatConfig.EnableColorLimitChecks,
                 CheatCategory.NameLimits => _antiCheatConfig.EnableNameLimitChecks,
@@ -82,11 +83,14 @@ namespace Impostor.Server.Net
                 return false;
             }
 
-            _logger.LogWarning("Client {Name} ({Id}) ({Ip}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, context.Name, category, message);
+            _logger.LogWarning("Client {Name} ({Id}) ({Ip}) Authority: ({Authority}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, Player.Client.GameVersion.HasDisableServerAuthorityFlag, context.Name, category, message);
 
             if (_antiCheatConfig.BanIpFromGame)
             {
-                Player?.Game.BanIp(Connection.EndPoint.Address);
+                if (!(_antiCheatConfig.NoBanAuthoritive && Player.Client.GameVersion.HasDisableServerAuthorityFlag))
+                {
+                    Player?.Game.BanIp(Connection.EndPoint.Address);
+                }
             }
 
             await DisconnectAsync(DisconnectReason.Hacking, context.Name + ": " + message);

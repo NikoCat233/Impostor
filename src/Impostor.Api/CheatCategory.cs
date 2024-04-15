@@ -8,6 +8,9 @@ public enum CheatCategory
     /// <summary>A packet was sent at an inappropriate moment.</summary>
     GameFlow,
 
+    /// <summary>A packet was sent at an inappropriate moment but much more obvious.</summary>
+    ObviousGameFlow,
+
     /// <summary>A packet was sent by a non-host player that should normally only be sent by the host.</summary>
     MustBeHost,
 

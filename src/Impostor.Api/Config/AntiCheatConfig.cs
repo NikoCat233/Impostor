@@ -1,4 +1,4 @@
-﻿namespace Impostor.Api.Config
+namespace Impostor.Api.Config
 {
     public class AntiCheatConfig
     {
@@ -8,9 +8,13 @@
 
         public bool BanIpFromGame { get; set; } = true;
 
+        public bool NoBanAuthoritive { get; set; } = false;
+
         public CheatingHostMode AllowCheatingHosts { get; set; } = CheatingHostMode.Never;
 
         public bool EnableGameFlowChecks { get; set; } = true;
+
+        public bool EnableObviousChecks { get; set; } = false;
 
         public bool EnableMustBeHostChecks { get; set; } = true;
 

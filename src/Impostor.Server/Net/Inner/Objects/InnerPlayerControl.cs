@@ -264,7 +264,7 @@ namespace Impostor.Server.Net.Inner.Objects
                     }
 
                     Rpc11ReportDeadBody.Deserialize(reader, out var targetId);
-                    break;
+                    return await HandleReportDeadBody(sender, targetId);
                 }
 
                 case RpcCalls.MurderPlayer:
@@ -441,8 +441,8 @@ namespace Impostor.Server.Net.Inner.Objects
                         return false;
                     }
 
-                    Rpc48CheckProtect.Deserialize(reader, Game, out _);
-                    break;
+                    Rpc48CheckProtect.Deserialize(reader, Game, out var protecttarget);
+                    return await HandleCheckProtect(sender, (InnerPlayerControl?)protecttarget);
                 }
 
                 case RpcCalls.CheckZipline:
@@ -598,7 +598,7 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             if (Game.GameState == GameStates.Started)
             {
-                if (await sender.Client.ReportCheatAsync(RpcCalls.SetColor, CheatCategory.GameFlow, "Client tried to set a name midgame"))
+                if (await sender.Client.ReportCheatAsync(RpcCalls.SetName, CheatCategory.GameFlow, "Client tried to set a name midgame"))
                 {
                     return false;
                 }
@@ -811,6 +811,65 @@ namespace Impostor.Server.Net.Inner.Objects
             return true;
         }
 
+        private async ValueTask<bool> HandleReportDeadBody(ClientPlayer sender, byte targetId)
+        {
+            if (Game.GameState != GameStates.Started)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.ReportDeadBody, CheatCategory.GameFlow, "Client tried to report a dead body while not in game"))
+                {
+                    return false;
+                }
+
+                if (await sender.Client.ReportCheatAsync(RpcCalls.ReportDeadBody, CheatCategory.ObviousGameFlow, "Client tried to report a dead body while not in game"))
+                {
+                    return false;
+                }
+            }
+
+            if (PlayerInfo.IsDead)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.ReportDeadBody, CheatCategory.GameFlow, "Client tried to report a dead body with a dead pc"))
+                {
+                    return false;
+                }
+            }
+
+            var target = Game.GameNet.GameData!.GetPlayerById(targetId);
+
+            if (targetId == byte.MaxValue) // Meeting Buttons
+            {
+                return true;
+            }
+
+            if (target == null)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.ReportDeadBody, CheatCategory.Target, "Client tried to report a unexisted player"))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                if (target.PlayerId == PlayerId)
+                {
+                    if (await sender.Client.ReportCheatAsync(RpcCalls.ReportDeadBody, CheatCategory.Target, "Client tried to report itself"))
+                    {
+                        return false;
+                    }
+                }
+
+                if (!target.IsDead)
+                {
+                    if (await sender.Client.ReportCheatAsync(RpcCalls.ReportDeadBody, CheatCategory.Target, "Client tried to report a alive player"))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
         private async ValueTask<bool> HandleCheckMurder(ClientPlayer sender, InnerPlayerControl? target)
         {
             if (!PlayerInfo.CanMurder(Game, _dateTimeProvider))
@@ -830,9 +889,17 @@ namespace Impostor.Server.Net.Inner.Objects
                 }
             }
 
+            if (Game.GameState != GameStates.Started)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.CheckMurder, CheatCategory.GameFlow, "Client tried to check murder out of game"))
+                {
+                    return false;
+                }
+            }
+
             // Host-only mods intentionally desync players, so it may appear that one killing role (like a genuine impostor) is killing another
             // killing role (like an sheriff). So this needs to be allowed if the host requested authority.
-            if (target == null || (target.PlayerInfo.IsImpostor && !_game.IsHostAuthoritive))
+            if (target == null || (target.PlayerInfo.IsImpostor && !_game.IsHostAuthoritive) || target.PlayerId == sender.Character.PlayerId)
             {
                 if (await sender.Client.ReportCheatAsync(RpcCalls.CheckMurder, CheatCategory.GameFlow, "Client tried to murder invalid target"))
                 {
@@ -865,6 +932,40 @@ namespace Impostor.Server.Net.Inner.Objects
             }
 
             return false;
+        }
+
+        private async ValueTask<bool> HandleCheckProtect(ClientPlayer sender, InnerPlayerControl? target)
+        {
+            if (Game.GameState != GameStates.Started)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.CheckProtect, CheatCategory.GameFlow, "Client tried to check protect out of game"))
+                {
+                    return false;
+                }
+
+                if (await sender.Client.ReportCheatAsync(RpcCalls.CheckProtect, CheatCategory.ObviousGameFlow, "Client tried to check protect out of game"))
+                {
+                    return false;
+                }
+            }
+
+            if (!PlayerInfo.IsDead)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.CheckProtect, CheatCategory.GameFlow, "Client tried to protect while alive"))
+                {
+                    return false;
+                }
+            }
+
+            if (target == null || target.PlayerInfo.IsDead)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.CheckProtect, CheatCategory.Target, "Client tried to protect invalid target"))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private async ValueTask<bool> HandleMurderPlayer(ClientPlayer sender, InnerPlayerControl? target, MurderResultFlags result)
@@ -921,9 +1022,9 @@ namespace Impostor.Server.Net.Inner.Objects
 
         private async ValueTask<bool> HandleProtectPlayer(ClientPlayer sender, IInnerPlayerControl? target)
         {
-            if (target == null)
+            if (target == null || target.PlayerInfo.IsDead)
             {
-                if (await sender.Client.ReportCheatAsync(RpcCalls.CheckProtect, CheatCategory.Target, "Client tried to protect invalid target"))
+                if (await sender.Client.ReportCheatAsync(RpcCalls.ProtectPlayer, CheatCategory.Target, "Client tried to protect invalid target"))
                 {
                     return false;
                 }
