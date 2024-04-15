@@ -85,6 +85,7 @@ namespace Impostor.Server.Net
 
             _logger.LogWarning("Client {Name} ({Id}) ({Ip}) Authority: ({Authority}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, Player.Client.GameVersion.HasDisableServerAuthorityFlag, context.Name, category, message);
 
+            var isBan = false;
             if (_antiCheatConfig.BanIpFromGame)
             {
                 if (!(_antiCheatConfig.NoBanAuthoritive && Player.Client.GameVersion.HasDisableServerAuthorityFlag))
@@ -93,6 +94,12 @@ namespace Impostor.Server.Net
                 }
             }
 
+            var kickmessage = MessageWriter.Get(MessageType.Reliable);
+
+            // Send message to everyone that this player was kicked.
+            WriteRemovePlayerMessage(kickmessage, true, Player.Client.Id, DisconnectReason.Hacking);
+
+            await Player.Game.SendToAllExceptAsync(kickmessage, Player.Client.Id);
             await DisconnectAsync(DisconnectReason.Hacking, context.Name + ": " + message);
 
             return true;
@@ -409,6 +416,11 @@ namespace Impostor.Server.Net
             Message22QueryPlatformIdsS2C.Serialize(message, code, playerSpecificData);
 
             return Connection.SendAsync(message);
+        }
+
+        private void WriteRemovePlayerMessage(IMessageWriter message, bool clear, int playerId, DisconnectReason reason)
+        {
+            Message04RemovePlayerS2C.Serialize(message, clear, Player.Game.Code, playerId, Player.Game.HostId, reason);
         }
     }
 }

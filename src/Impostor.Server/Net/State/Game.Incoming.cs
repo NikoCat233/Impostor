@@ -74,7 +74,7 @@ namespace Impostor.Server.Net.State
 
         public async ValueTask HandleKickPlayer(int playerId, bool isBan)
         {
-            _logger.LogInformation("{0} - Player {1} has left.", Code, playerId);
+            _logger.LogInformation("{0} - Player {1} has been {2}.", Code, playerId, isBan ? "Banned" : "Kicked");
 
             using var message = MessageWriter.Get(MessageType.Reliable);
 
@@ -121,6 +121,25 @@ namespace Impostor.Server.Net.State
         private async ValueTask HandleJoinGameNewAsync(ClientPlayer sender, bool isNew)
         {
             _logger.LogInformation("{0} - Player {1} ({2}) is joining from ({3}) with v{4}, Authority:{5}", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
+
+            // Should only happen on first player join(Host).
+            if (DecidedAuthoritive == false)
+            {
+                if (sender.Client.GameVersion.HasDisableServerAuthorityFlag)
+                {
+                    Authoritive = true;
+                    _logger.LogInformation("{0} - Enabled Authoritive by Player {1} ({2})", Code, sender.Client.Name, sender.Client.Id);
+                }
+                else
+                {
+                    Authoritive = false;
+                    _logger.LogInformation("{0} - Run on Vanilla by Player {1} ({2})", Code, sender.Client.Name, sender.Client.Id);
+                }
+
+                DecidedAuthoritive = true;
+            }
+
+            DecidedAuthoritive = true;
 
             // Add player to the game.
             if (isNew)
