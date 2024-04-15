@@ -95,6 +95,7 @@ namespace Impostor.Server.Net.State
                 .Select(p => p.Value)
                 .FirstOrDefault();
 
+            // Try to assign host to a modded player.
             if (IsHostAuthoritive)
             {
                 host = _players
@@ -115,7 +116,7 @@ namespace Impostor.Server.Net.State
             }
 
             HostId = host.Client.Id;
-            _logger.LogInformation("{0} - Assigned {1} ({2}) as new host.", Code, host.Client.Name, host.Client.Id);
+            _logger.LogInformation("{0} - Assigned {1} ({2}) as new host. Authority : {3}", Code, host.Client.Name, host.Client.Id, host.Client.GameVersion.HasDisableServerAuthorityFlag);
 
             // Check our current game state.
             if (GameState == GameStates.Ended && host.Limbo == LimboStates.WaitingForHost)
