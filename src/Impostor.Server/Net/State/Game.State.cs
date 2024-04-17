@@ -92,17 +92,9 @@ namespace Impostor.Server.Net.State
         {
             // Pick the first player as new host.
             var host = _players
+                .Where(p => p.Key != HostId)
                 .Select(p => p.Value)
                 .FirstOrDefault();
-
-            // Try to assign host to a modded player.
-            if (IsHostAuthoritive)
-            {
-                host = _players
-                    .Where(p => p.Value.Client.GameVersion.HasDisableServerAuthorityFlag)
-                    .Select(p => p.Value)
-                    .FirstOrDefault();
-            }
 
             if (host == null)
             {
