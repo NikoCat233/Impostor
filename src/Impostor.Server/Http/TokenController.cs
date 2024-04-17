@@ -49,7 +49,7 @@ public sealed class TokenController : ControllerBase
             return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
         }
 
-        if (!ClientManager._puids.TryGetValue(request.ProductUserId, out _))
+        if (!ClientManager._puids.ContainsValue(request.ProductUserId))
         {
             ClientManager._puids.TryAdd(ipAddress.ToString(), request.ProductUserId);
         }
