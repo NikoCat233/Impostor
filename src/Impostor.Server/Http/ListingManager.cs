@@ -37,6 +37,7 @@ public sealed class ListingManager
     /// <param name="impostorCount">The amount of impostors. 0 is any.</param>
     /// <param name="language">Chat language of the game.</param>
     /// <param name="gameVersion">Game version of the client.</param>
+    /// <param name="puid">Product user id.</param>
     /// <param name="maxListings">Maximum amount of games to return.</param>
     /// <returns>Listings that match the required criteria.</returns>
     public IEnumerable<IGame> FindListings(HttpContext ctx, int map, int impostorCount, GameKeywords language, GameVersion gameVersion, int maxListings = 10)
@@ -58,6 +59,7 @@ public sealed class ListingManager
             {
                 continue;
             }
+
 
             if (!_compatibilityConfig.AllowVersionMixing &&
                 game.Host != null &&

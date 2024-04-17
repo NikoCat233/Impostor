@@ -12,6 +12,7 @@ using Impostor.Server.Net.Inner.Objects;
 using Impostor.Server.Net.Inner.Objects.Components;
 using Impostor.Server.Net.Inner.Objects.GameManager;
 using Impostor.Server.Net.Inner.Objects.ShipStatus;
+using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -82,8 +83,14 @@ namespace Impostor.Server.Net.State
             while (parent.Position < parent.Length)
             {
                 using var reader = parent.ReadMessage();
+                var tag = (GameDataTag)reader.Tag;
 
-                switch (reader.Tag)
+                if (!sender.IsHost && sender.Game.IsHostAuthoritive && tag != GameDataTag.RpcFlag && tag != GameDataTag.DataFlag)
+                {
+                    _logger.LogInformation("Got GameData tag from {0} of type {1}", sender.Client.Name, tag);
+                }
+
+                switch (tag)
                 {
                     case GameDataTag.DataFlag:
                     {
@@ -341,6 +348,18 @@ namespace Impostor.Server.Net.State
                     {
                         playerInfo.Controller = control;
                         control.PlayerInfo = playerInfo;
+                    }
+
+                    if (ClientManager._puids.TryGetValue(sender.Client.Connection.EndPoint.Address.ToString(), out string puid))
+                    {
+                        if (puid == null || playerInfo == null)
+                        {
+                            await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.GameFlow, "Failed to find puid of player");
+                            return;
+                        }
+
+                        playerInfo.ProductUserId = puid;
+                        _logger.LogInformation(playerInfo.ProductUserId);
                     }
 
                     if (player != null)

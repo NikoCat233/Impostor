@@ -26,12 +26,15 @@ namespace Impostor.Server.Net.Manager
         private readonly IClientFactory _clientFactory;
         private int _idLast;
 
+        public static ConcurrentDictionary<string, string> _puids;
+
         public ClientManager(ILogger<ClientManager> logger, IEventManager eventManager, IClientFactory clientFactory, ICompatibilityManager compatibilityManager, IOptions<CompatibilityConfig> compatibilityConfig)
         {
             _logger = logger;
             _eventManager = eventManager;
             _clientFactory = clientFactory;
             _clients = new ConcurrentDictionary<int, ClientBase>();
+            _puids = new ConcurrentDictionary<string, string>();
             _compatibilityManager = compatibilityManager;
             _compatibilityConfig = compatibilityConfig.Value;
         }
