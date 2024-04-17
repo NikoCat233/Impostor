@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Impostor.Api;
@@ -24,6 +24,7 @@ namespace Impostor.Server.Net
         public int Id { get; set; }
 
         public string Name { get; }
+        public string Puid { get; }
 
         public Language Language { get; }
 

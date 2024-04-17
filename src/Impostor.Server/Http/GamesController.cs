@@ -71,17 +71,25 @@ public sealed class GamesController : ControllerBase
     /// Get the address a certain game is hosted at.
     /// </summary>
     /// <param name="gameId">The id of the game that should be retrieved.</param>
+    /// <param name="authorization">Authorization.</param>
     /// <returns>The server this game is hosted on.</returns>
     [HttpPost]
-    public IActionResult Post(int gameId)
+    public IActionResult Post(int gameId, [FromHeader] AuthenticationHeaderValue authorization)
     {
         var code = new GameCode(gameId);
         var game = _gameManager.Find(code);
 
         // If the game was not found, print an error message.
+        var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
+
+        if (token == null)
+        {
+            return BadRequest();
+        }
+
         if (game == null)
         {
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
+            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.IncorrectGame)));
         }
 
         return Ok(HostServer.From(game.PublicIp));
@@ -90,10 +98,20 @@ public sealed class GamesController : ControllerBase
     /// <summary>
     /// Get the address to host a new game on.
     /// </summary>
+    /// <summary>
+    /// <param name="authorization">Authorization.</param>
+    /// </summary>
     /// <returns>The address of this server.</returns>
     [HttpPut]
-    public IActionResult Put()
+    public IActionResult Put([FromHeader] AuthenticationHeaderValue authorization)
     {
+        var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
+
+        if (token == null)
+        {
+            return BadRequest();
+        }
+
         return Ok(_hostServer);
     }
 
@@ -104,7 +122,7 @@ public sealed class GamesController : ControllerBase
 #pragma warning restore CS0618
     }
 
-    private class HostServer
+    public class HostServer
     {
         [JsonPropertyName("Ip")]
         public required long Ip { get; init; }
@@ -127,7 +145,7 @@ public sealed class GamesController : ControllerBase
         }
     }
 
-    private class MatchmakerResponse
+    public class MatchmakerResponse
     {
         [SetsRequiredMembers]
         public MatchmakerResponse(MatchmakerError error)
@@ -139,7 +157,7 @@ public sealed class GamesController : ControllerBase
         public required MatchmakerError[] Errors { get; init; }
     }
 
-    private class MatchmakerError
+    public class MatchmakerError
     {
         [SetsRequiredMembers]
         public MatchmakerError(DisconnectReason reason)

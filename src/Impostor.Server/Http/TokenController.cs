@@ -1,8 +1,12 @@
 using System;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Impostor.Api.Innersloth;
+using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
+using static Impostor.Server.Http.GamesController;
 
 namespace Impostor.Server.Http;
 
@@ -13,6 +17,8 @@ namespace Impostor.Server.Http;
 [ApiController]
 public sealed class TokenController : ControllerBase
 {
+    private readonly ILogger _logger = Log.Logger;
+
     /// <summary>
     /// Get an authentication token.
     /// </summary>
@@ -21,6 +27,13 @@ public sealed class TokenController : ControllerBase
     [HttpPost]
     public IActionResult GetToken([FromBody] TokenRequest request)
     {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress;
+
+        if (ipAddress == null)
+        {
+            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+        }
+
         var token = new Token
         {
             Content = new TokenPayload
@@ -31,9 +44,24 @@ public sealed class TokenController : ControllerBase
             Hash = "impostor_was_here",
         };
 
+        if (string.IsNullOrWhiteSpace(token.Content.ProductUserId))
+        {
+            _logger.Information("{0} apparently had no account", request.Username);
+            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+        }
+
+        if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
+        {
+            ClientManager._puids.TryAdd(ipAddress.ToString(), request.ProductUserId);
+        }
+        else
+        {
+            ClientManager._puids[ipAddress.ToString()] = request.ProductUserId;
+        }
+
         // Wrap into a Base64 sandwich
         var serialized = JsonSerializer.SerializeToUtf8Bytes(token);
-        return this.Ok(Convert.ToBase64String(serialized));
+        return Ok(Convert.ToBase64String(serialized));
     }
 
     /// <summary>

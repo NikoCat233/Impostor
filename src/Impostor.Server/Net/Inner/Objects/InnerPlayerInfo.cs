@@ -48,6 +48,8 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public uint PlayerLevel { get; internal set; }
 
+        public string ProductUserId { get; internal set; }
+
         public bool CanMurder(IGame game, IDateTimeProvider dateTimeProvider)
         {
             if (!IsImpostor)
