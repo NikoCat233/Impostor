@@ -350,16 +350,20 @@ namespace Impostor.Server.Net.State
                         control.PlayerInfo = playerInfo;
                     }
 
-                    if (ClientManager._puids.TryGetValue(sender.Client.Connection.EndPoint.Address.ToString(), out string puid))
+                    if (ClientManager._puids.TryGetValue(sender.Client.Connection.EndPoint.Address.ToString(), out var puid))
                     {
-                        if (puid == null || playerInfo == null)
+                        if (playerInfo == null)
                         {
-                            await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.GameFlow, "Failed to find puid of player");
+                            await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.GameFlow, "Failed to find playerinfo of player");
                             return;
                         }
 
                         playerInfo.ProductUserId = puid;
-                        _logger.LogInformation(playerInfo.ProductUserId);
+                    }
+                    else
+                    {
+                        await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.GameFlow, "Failed to find puid of player");
+                        return;
                     }
 
                     if (player != null)
