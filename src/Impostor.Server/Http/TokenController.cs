@@ -54,6 +54,10 @@ public sealed class TokenController : ControllerBase
         {
             ClientManager._puids.TryAdd(ipAddress.ToString(), request.ProductUserId);
         }
+        else
+        {
+            ClientManager._puids[ipAddress.ToString()] = request.ProductUserId;
+        }
 
         // Wrap into a Base64 sandwich
         var serialized = JsonSerializer.SerializeToUtf8Bytes(token);
