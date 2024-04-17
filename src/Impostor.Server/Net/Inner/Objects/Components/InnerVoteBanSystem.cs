@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Impostor.Api;
@@ -67,12 +67,20 @@ namespace Impostor.Server.Net.Inner.Objects.Components
             {
                 Rpc26AddVote.Deserialize(reader, out var clientId, out var targetClientId);
 
+                _logger.LogInformation("{0} - Client {1} add vote ban for client {2}.", sender.Game.Code, clientId, targetClientId);
+
                 if (clientId != sender.Client.Id)
                 {
                     if (await sender.Client.ReportCheatAsync(RpcCalls.AddVote, CheatCategory.Ownership, $"Client sent {nameof(RpcCalls.AddVote)} as other client"))
                     {
                         return false;
                     }
+                }
+
+                if (sender.Game.GetClientPlayer(targetClientId) == null)
+                {
+                    _logger.LogWarning("Client {0} tried to vote for non-existing player {1}.", clientId, targetClientId);
+                    return false;
                 }
 
                 return true;

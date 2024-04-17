@@ -94,7 +94,7 @@ namespace Impostor.Server.Net.State
                         }
                         else
                         {
-                            _logger.LogWarning("Received DataFlag for unregistered NetId {0}.", netId);
+                            _logger.LogWarning("Received DataFlag for unregistered NetId {0} from client {1}.", netId, sender.Client.Id);
                         }
 
                         break;
@@ -113,7 +113,7 @@ namespace Impostor.Server.Net.State
                         }
                         else
                         {
-                            _logger.LogWarning("Received RpcFlag for unregistered NetId {0}.", netId);
+                            _logger.LogWarning("Received RpcFlag for unregistered NetId {0} from client {1}.", netId, sender.Client.Id);
                         }
 
                         break;
@@ -236,6 +236,12 @@ namespace Impostor.Server.Net.State
                                 "Player {0} ({1}) tried to send SceneChangeFlag for another player.",
                                 sender.Client.Name,
                                 sender.Client.Id);
+
+                            if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SceneChangeFlag)), CheatCategory.Ownership, "Tried to send SceneChangeFlag as other player."))
+                            {
+                                return false;
+                            }
+
                             return false;
                         }
 
@@ -248,6 +254,20 @@ namespace Impostor.Server.Net.State
                     case GameDataTag.ReadyFlag:
                     {
                         var clientId = reader.ReadPackedInt32();
+
+                        if (clientId != sender.Client.Id)
+                        {
+                            if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.ReadyFlag)), CheatCategory.Ownership, "Client sent info with wrong client id"))
+                            {
+                                return false;
+                            }
+                        }
+
+                        if (GameState != GameStates.Starting)
+                        {
+                            _logger.LogWarning("{0} - Player {1} ({2}) tried to send ReadyFlag but game is not starting.", Code, sender.Client.Name, sender.Client.Id);
+                        }
+
                         _logger.LogTrace("> IsReady {0}", clientId);
                         break;
                     }

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Config;
@@ -193,6 +194,7 @@ namespace Impostor.Server.Net
                 {
                     if (!IsPacketAllowed(reader, true))
                     {
+                        _logger.LogWarning("{0} - Client {1} sent StartGame packet without permission.", Player!.Game.Code, Id);
                         return;
                     }
 
@@ -202,12 +204,16 @@ namespace Impostor.Server.Net
 
                 // No idea how this flag is triggered.
                 case MessageFlags.RemoveGame:
-                    break;
+                {
+                    _logger.LogWarning("{0} - Client {1} sent RemoveGame which is impossible.", Player!.Game.Code, Id);
+                    return;
+                }
 
                 case MessageFlags.RemovePlayer:
                 {
                     if (!IsPacketAllowed(reader, true))
                     {
+                        _logger.LogWarning("{0} - Client {1} sent RemovePlayer packet without permission.", Player!.Game.Code, Id);
                         return;
                     }
 
@@ -225,6 +231,7 @@ namespace Impostor.Server.Net
                 {
                     if (!IsPacketAllowed(reader, false))
                     {
+                        _logger.LogWarning("{0} - Client {1} sent GameData/GameDataTo packet without permission.", Player!.Game.Code, Id);
                         return;
                     }
 
@@ -260,6 +267,7 @@ namespace Impostor.Server.Net
                 {
                     if (!IsPacketAllowed(reader, true))
                     {
+                        _logger.LogWarning("{0} - Client {1} sent EndGame packet without permission.", Player!.Game.Code, Id);
                         return;
                     }
 
@@ -275,6 +283,7 @@ namespace Impostor.Server.Net
                 {
                     if (!IsPacketAllowed(reader, true))
                     {
+                        _logger.LogWarning("{0} - Client {1} sent AlterGame packet without permission.", Player!.Game.Code, Id);
                         return;
                     }
 
@@ -296,6 +305,7 @@ namespace Impostor.Server.Net
                 {
                     if (!IsPacketAllowed(reader, true))
                     {
+                        _logger.LogWarning("{0} - Client {1} sent KickPlayer packet without permission.", Player!.Game.Code, Id);
                         return;
                     }
 
@@ -379,10 +389,12 @@ namespace Impostor.Server.Net
             }
 
             var game = Player.Game;
+            var messagecode = message.ReadInt32();
 
             // GameCode must match code of the current game assigned to the player.
-            if (message.ReadInt32() != game.Code)
+            if (messagecode != game.Code)
             {
+                _logger.LogWarning("{0} - Client {1} sent packet with invalid game code {2}", game.Code, Id, messagecode);
                 return false;
             }
 

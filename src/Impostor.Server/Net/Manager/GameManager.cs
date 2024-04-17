@@ -65,6 +65,7 @@ namespace Impostor.Server.Net.Manager
         {
             if (_games.TryGetValue(gameCode, out var game) && game.PlayerCount > 0)
             {
+                _logger.LogWarning("{gameCode} - Remove game happened but there are still players in game.", gameCode);
                 foreach (var player in game.Players)
                 {
                     await player.KickAsync();
