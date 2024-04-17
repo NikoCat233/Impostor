@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Config;
@@ -95,13 +94,7 @@ namespace Impostor.Server.Net
                 }
             }
 
-            var kickmessage = MessageWriter.Get();
-
-            // Send message to everyone that this player was kicked.
-            WriteRemovePlayerMessage(kickmessage, true, Player.Client.Id, DisconnectReason.Hacking);
-
-            await Player.Game.SendToAllExceptAsync(kickmessage, Player.Client.Id);
-            await DisconnectAsync(DisconnectReason.Hacking, context.Name + ": " + message);
+            await Player!.RemoveAsync(DisconnectReason.Hacking);
 
             return true;
         }
@@ -314,6 +307,7 @@ namespace Impostor.Server.Net
                         out var playerId,
                         out var isBan);
 
+                    _logger.LogWarning("{Code} - {Id} kicked player {PlayerId} with ban {IsBan}.", Player!.Game.Code, Id, playerId, isBan);
                     await Player!.Game.HandleKickPlayer(playerId, isBan);
                     break;
                 }
@@ -429,11 +423,6 @@ namespace Impostor.Server.Net
             Message22QueryPlatformIdsS2C.Serialize(message, code, playerSpecificData);
 
             return Connection.SendAsync(message);
-        }
-
-        private void WriteRemovePlayerMessage(IMessageWriter message, bool clear, int playerId, DisconnectReason reason)
-        {
-            Message04RemovePlayerS2C.Serialize(message, clear, Player.Game.Code, playerId, Player.Game.HostId, reason);
         }
     }
 }
