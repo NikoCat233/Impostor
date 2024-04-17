@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Impostor.Api.Innersloth;
@@ -49,7 +50,7 @@ public sealed class TokenController : ControllerBase
             return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
         }
 
-        if (!ClientManager._puids.ContainsValue(request.ProductUserId))
+        if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
         {
             ClientManager._puids.TryAdd(ipAddress.ToString(), request.ProductUserId);
         }
