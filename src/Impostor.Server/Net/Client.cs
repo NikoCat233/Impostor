@@ -94,7 +94,7 @@ namespace Impostor.Server.Net
                 }
             }
 
-            await Player!.RemoveAsync(DisconnectReason.Hacking);
+            await Player!.RemoveAsync(DisconnectReason.Custom, "[Imposter AntiCheat+]\n You are kicked because of cheating.\nIf you believe this is a mistake, report issues at discord.gg/tohe");
 
             return true;
         }

@@ -73,7 +73,7 @@ namespace Impostor.Server.Net.State
         public async ValueTask RemoveAsync(DisconnectReason reason, string custom = "")
         {
             await Game.HandleRemovePlayer(Client.Id, reason);
-            await Client.Connection.CustomDisconnectAsync(reason, custom);
+            await Client.DisconnectAsync(reason, custom);
         }
 
         private async void RunSpawnTimeout(object state)
