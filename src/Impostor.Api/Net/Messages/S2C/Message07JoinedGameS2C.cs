@@ -25,8 +25,8 @@ namespace Impostor.Api.Net.Messages.S2C
                 writer.WritePacked(ply.Character?.PlayerInfo.PlayerLevel ?? 1);
 
                 // ProductUserId and FriendCode are not yet known, so set them to an empty string
-                writer.Write(string.Empty);
-                writer.Write(string.Empty);
+                writer.Write(ply.Client.Puid);
+                writer.Write("placeholder#0001");
             }
 
             writer.EndMessage();

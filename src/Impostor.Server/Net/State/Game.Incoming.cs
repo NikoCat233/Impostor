@@ -1,11 +1,14 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Impostor.Api;
 using Impostor.Api.Games;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
 using Impostor.Hazel;
 using Impostor.Server.Events;
+using Impostor.Server.Net.Inner;
+using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -152,6 +155,16 @@ namespace Impostor.Server.Net.State
             }
 
             sender.InitializeSpawnTimeout();
+
+            if (ClientManager._puids.TryGetValue(sender.Client.Connection.EndPoint.Address.ToString(), out var puid2))
+            {
+                sender.Client.Puid = puid2;
+            }
+            else
+            {
+                await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.AuthError, "No ip matches the client. Failed to find puid of player");
+                return;
+            }
 
             using (var message = MessageWriter.Get(MessageType.Reliable))
             {

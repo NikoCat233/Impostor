@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
 using Impostor.Api.Events.Managers;
@@ -13,10 +14,13 @@ using Impostor.Api.Innersloth.GameOptions;
 using Impostor.Api.Net;
 using Impostor.Api.Net.Manager;
 using Impostor.Api.Net.Messages.S2C;
+using Impostor.Hazel;
 using Impostor.Server.Events;
+using Impostor.Server.Net.Inner.Objects;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog.Core;
 
 namespace Impostor.Server.Net.State
 {

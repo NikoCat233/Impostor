@@ -367,23 +367,8 @@ namespace Impostor.Server.Net.State
                     if (playerInfo != null)
                     {
                         playerInfo.Controller = control;
+                        playerInfo.ProductUserId = player!.Client.Puid;
                         control.PlayerInfo = playerInfo;
-                    }
-
-                    if (ClientManager._puids.TryGetValue(sender.Client.Connection.EndPoint.Address.ToString(), out var puid))
-                    {
-                        if (playerInfo == null)
-                        {
-                            await sender.Client.Connection.CustomDisconnectAsync(DisconnectReason.InternalPlayerMissing, "No Playerinfo is bind to the client's PlayerControl");
-                            return;
-                        }
-
-                        playerInfo.ProductUserId = puid;
-                    }
-                    else
-                    {
-                        await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.AuthError, "No ip matches the client. Failed to find puid of player");
-                        return;
                     }
 
                     if (player != null)

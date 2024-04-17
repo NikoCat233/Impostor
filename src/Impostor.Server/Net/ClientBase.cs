@@ -25,7 +25,7 @@ namespace Impostor.Server.Net
 
         public string Name { get; }
 
-        public string Puid { get; }
+        public string Puid { get; set; }
 
         public Language Language { get; }
 

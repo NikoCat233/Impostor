@@ -85,7 +85,7 @@ namespace Impostor.Server.Net
                 return false;
             }
 
-            _logger.LogWarning("Client {Name} ({Id}) ({Ip}) Authority: ({Authority}) was caught cheating: [{Context}-{Category}] {Message}, puid : {Puid}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, Player.Client.GameVersion.HasDisableServerAuthorityFlag, context.Name, category, message, Player!.Character!.PlayerInfo.ProductUserId);
+            _logger.LogWarning("Client {Name} ({Id}) ({Ip}) Authority: ({Authority}) was caught cheating: [{Context}-{Category}] {Message}, puid : {Puid}", Name, Id, Player.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, Player.Client.GameVersion.HasDisableServerAuthorityFlag, context.Name, category, message, Player!.Client!.Puid);
 
             if (_antiCheatConfig.BanIpFromGame && category != CheatCategory.AuthError)
             {
