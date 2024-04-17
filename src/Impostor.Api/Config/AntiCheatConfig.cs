@@ -24,6 +24,8 @@ namespace Impostor.Api.Config
 
         public bool EnableOwnershipChecks { get; set; } = true;
 
+        public bool ForceAuthenticationOrKick { get; set; } = false;
+
         public bool EnableRoleChecks { get; set; } = true;
 
         public bool EnableTargetChecks { get; set; } = true;

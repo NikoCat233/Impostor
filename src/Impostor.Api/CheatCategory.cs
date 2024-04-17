@@ -23,6 +23,9 @@ public enum CheatCategory
     /// <summary>A packet was sent on behalf of another player.</summary>
     Ownership,
 
+    /// <summary>A client failed to authenticate with the server.</summary>
+    AuthError,
+
     /// <summary>An ability was used that the current role cannot access.</summary>
     Role,
 

@@ -374,7 +374,7 @@ namespace Impostor.Server.Net.State
                     {
                         if (playerInfo == null)
                         {
-                            await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.GameFlow, "Failed to find playerinfo of player");
+                            await sender.Client.Connection.CustomDisconnectAsync(DisconnectReason.InternalPlayerMissing, "No Playerinfo is bind to the client's PlayerControl");
                             return;
                         }
 
@@ -382,7 +382,7 @@ namespace Impostor.Server.Net.State
                     }
                     else
                     {
-                        await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.GameFlow, "Failed to find puid of player");
+                        await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.AuthError, "No ip matches the client. Failed to find puid of player");
                         return;
                     }
 
@@ -391,6 +391,7 @@ namespace Impostor.Server.Net.State
                         await _eventManager.CallAsync(new PlayerSpawnedEvent(this, player, control));
                     }
 
+                    _logger.LogInformation("{0} - Player {1} ({2}) spawned as {3}, hashpuid is {4}", Code, sender.Client.Name, sender.Client.Id, control.PlayerId, playerInfo.HashedPuid());
                     break;
                 }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Impostor.Api.Games;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Innersloth.Customization;
@@ -49,6 +50,24 @@ namespace Impostor.Server.Net.Inner.Objects
         public uint PlayerLevel { get; internal set; }
 
         public string ProductUserId { get; internal set; }
+
+        public string HashedPuid()
+        {
+            if (ProductUserId == null || ProductUserId == string.Empty)
+            {
+                return string.Empty;
+            }
+
+            string puid = ProductUserId;
+            using System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create();
+
+            // get sha-256 hash
+            var sha256Bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(puid));
+            var sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", string.Empty).ToLower();
+
+            // pick front 5 and last 4
+            return string.Concat(sha256Hash.AsSpan(0, 5), sha256Hash.AsSpan(sha256Hash.Length - 4));
+        }
 
         public bool CanMurder(IGame game, IDateTimeProvider dateTimeProvider)
         {
