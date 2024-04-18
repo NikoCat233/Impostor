@@ -162,6 +162,7 @@ namespace Impostor.Server.Net.State
             }
             else
             {
+                sender.Client.Puid = string.Empty;
                 await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.AuthError, "No ip matches the client. Failed to find puid of player");
                 return;
             }

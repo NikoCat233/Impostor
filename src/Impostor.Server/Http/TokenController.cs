@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -27,9 +28,14 @@ public sealed class TokenController : ControllerBase
     [HttpPost]
     public IActionResult GetToken([FromBody] TokenRequest request)
     {
-        var ipAddress = HttpContext.Connection.RemoteIpAddress;
+        var ipAddress = "127.0.0.1";
 
-        if (ipAddress == null)
+        if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedIps))
+        {
+            ipAddress = forwardedIps.First();
+        }
+
+        if (string.IsNullOrEmpty(ipAddress))
         {
             return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
         }

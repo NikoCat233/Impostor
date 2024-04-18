@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
 using Impostor.Api.Events.Managers;
@@ -18,6 +20,7 @@ using Impostor.Hazel;
 using Impostor.Server.Events;
 using Impostor.Server.Net.Inner.Objects;
 using Impostor.Server.Net.Manager;
+using Impostor.Server.Net.Messages;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Core;
@@ -140,7 +143,34 @@ namespace Impostor.Server.Net.State
                 await _eventManager.CallAsync(new GameStartedEvent(this));
             }
         }
+        /*
+        public static async Task<string> GetFriendCodeAsync(string puid)
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept", "application/vnd.api+json");
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + "guest");
 
+            try
+            {
+                var response = await client.GetAsync("https://backend.innersloth.com/api/user/lobby/invites?sender_puid=" + puid);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var rawJson = await response.Content.ReadAsStringAsync();
+                    var responseBody = JsonSerializer.Deserialize<Resp>(rawJson)?._recipientId;
+                    return responseBody ?? string.Empty;
+                }
+                else
+                {
+                    return response.StatusCode.ToString();
+                }
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+        }
+        */
         private ValueTask BroadcastJoinMessage(IMessageWriter message, bool clear, ClientPlayer player)
         {
             Message01JoinGameS2C.SerializeJoin(message, clear, Code, player, HostId);

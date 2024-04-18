@@ -367,7 +367,6 @@ namespace Impostor.Server.Net.State
                     if (playerInfo != null)
                     {
                         playerInfo.Controller = control;
-                        playerInfo.ProductUserId = player!.Client.Puid;
                         control.PlayerInfo = playerInfo;
                     }
 
@@ -376,7 +375,7 @@ namespace Impostor.Server.Net.State
                         await _eventManager.CallAsync(new PlayerSpawnedEvent(this, player, control));
                     }
 
-                    _logger.LogInformation("{0} - Player {1} ({2}) spawned as {3}, hashpuid is {4}", Code, sender.Client.Name, sender.Client.Id, control.PlayerId, playerInfo.HashedPuid());
+                    _logger.LogInformation("{0} - Player {1} ({2}) spawned as {3}, hashpuid is {4}", Code, sender.Client.Name, sender.Client.Id, control.PlayerId, sender.Client.HashedPuid());
                     break;
                 }
 

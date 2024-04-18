@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
@@ -60,6 +62,21 @@ namespace Impostor.Server.Net
         public async ValueTask DisconnectAsync(DisconnectReason reason, string? message = null)
         {
             await Connection.CustomDisconnectAsync(reason, message);
+        }
+
+        public string HashedPuid()
+        {
+            if (Puid == null || Puid == string.Empty)
+            {
+                return string.Empty;
+            }
+
+            var puid = Puid;
+
+            var sha256Bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(puid));
+            var sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", string.Empty).ToLower();
+
+            return string.Concat(sha256Hash.AsSpan(0, 5), sha256Hash.AsSpan(sha256Hash.Length - 4));
         }
     }
 }
