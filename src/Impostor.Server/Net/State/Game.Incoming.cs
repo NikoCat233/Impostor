@@ -1,13 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Impostor.Api;
 using Impostor.Api.Games;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
 using Impostor.Hazel;
 using Impostor.Server.Events;
-using Impostor.Server.Net.Inner;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -127,7 +125,7 @@ namespace Impostor.Server.Net.State
 
         private async ValueTask HandleJoinGameNewAsync(ClientPlayer sender, bool isNew)
         {
-            _logger.LogInformation("{0} - Player {1} ({2}) is joining from ({3}) with v{4}, Authority:{5}", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
+            _logger.LogInformation("{0} - Player {1} ({2}) ({3}) is joining from ({4}) with v{5}, Authority:{6}", Code, sender.Client.Name, sender.Client.HashedPuid(), sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
 
             // Should only happen on first player join(Host).
             if (_decidedAuthoritive == false)
@@ -156,17 +154,6 @@ namespace Impostor.Server.Net.State
 
             sender.InitializeSpawnTimeout();
 
-            if (ClientManager._puids.TryGetValue(sender.Client.Connection.EndPoint.Address.ToString(), out var puid2))
-            {
-                sender.Client.Puid = puid2;
-            }
-            else
-            {
-                sender.Client.Puid = string.Empty;
-                await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.AuthError, "No ip matches the client. Failed to find puid of player");
-                return;
-            }
-
             using (var message = MessageWriter.Get(MessageType.Reliable))
             {
                 WriteJoinedGameMessage(message, false, sender);
@@ -191,7 +178,7 @@ namespace Impostor.Server.Net.State
 
             // Check if the player is running the same version as the host
             if (_compatibilityConfig.AllowVersionMixing == false &&
-                this.Host != null && client.GameVersion != this.Host.Client.GameVersion)
+                this.Host != null && client.GameVersion != Host.Client.GameVersion)
             {
                 var versionCheckResult = _compatibilityManager.CanJoinGame(Host.Client.GameVersion, client.GameVersion);
                 if (versionCheckResult != GameJoinError.None)
@@ -232,6 +219,24 @@ namespace Impostor.Server.Net.State
                 isNew = true;
                 player = clientPlayer;
                 client.Player = clientPlayer;
+            }
+
+            if (ClientManager._puids.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var puid))
+            {
+                client.Puid = puid;
+                _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3}", Code, client.Name, client.Id, client.HashedPuid());
+            }
+            else
+            {
+                client.Puid = string.Empty;
+
+                if (Client._antiCheatConfig.ForceAuthenticationOrKick)
+                {
+                    _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Kicking player.", Code, client.Name, client.Id);
+                    return GameJoinResult.CreateCustomError("[Imposter Anticheat+]\nServer cannot auth you. Try disable your http proxy!\nIf this still happens, seek help at discord.gg/tohe");
+                }
+
+                _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
             }
 
             // Check current player state.

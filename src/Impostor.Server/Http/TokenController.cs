@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Impostor.Api.Innersloth;
+using Impostor.Server.Net;
 using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -40,6 +42,16 @@ public sealed class TokenController : ControllerBase
             return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
         }
 
+        // InnerSloth Udp network can not handle ipv6. If you need puid auth, do not open your server on ipv6
+        if (IPAddress.TryParse(ipAddress, out var parsedIpAddress) && parsedIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+        {
+            if (Client._antiCheatConfig.ForceAuthenticationOrKick)
+            {
+                _logger.Information("IPv6 address for {0} {1} is not allowed", request.Username, ipAddress);
+                return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+            }
+        }
+
         var token = new Token
         {
             Content = new TokenPayload
@@ -47,7 +59,7 @@ public sealed class TokenController : ControllerBase
                 ProductUserId = request.ProductUserId,
                 ClientVersion = request.ClientVersion,
             },
-            Hash = "impostor_was_here",
+            Hash = "MalumMenu_was_not_here",
         };
 
         if (string.IsNullOrWhiteSpace(token.Content.ProductUserId))
@@ -58,16 +70,31 @@ public sealed class TokenController : ControllerBase
 
         if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
         {
+            _logger.Information("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
             ClientManager._puids.TryAdd(ipAddress.ToString(), request.ProductUserId);
         }
-        else
+        else if (ClientManager._puids[ipAddress.ToString()] != request.ProductUserId)
         {
+            _logger.Information("{0} ({1}) ({2}) has been updated to ({3})", request.Username, HashedPuid(ClientManager._puids[ipAddress.ToString()]), ipAddress, HashedPuid(request.ProductUserId));
             ClientManager._puids[ipAddress.ToString()] = request.ProductUserId;
         }
 
         // Wrap into a Base64 sandwich
         var serialized = JsonSerializer.SerializeToUtf8Bytes(token);
         return Ok(Convert.ToBase64String(serialized));
+    }
+
+    private string HashedPuid(string puid2)
+    {
+        if (puid2 == null || puid2 == string.Empty)
+        {
+            return string.Empty;
+        }
+
+        var sha256Bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(puid2));
+        var sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", string.Empty).ToLower();
+
+        return string.Concat(sha256Hash.AsSpan(0, 5), sha256Hash.AsSpan(sha256Hash.Length - 4));
     }
 
     /// <summary>

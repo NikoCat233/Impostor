@@ -35,7 +35,7 @@ namespace Impostor.Server.Net.State
             {
                 return false;
             }
-            
+
             _logger.LogInformation("{0} - Player {1} ({2}) has left. hashpuid : {3}", Code, player.Client.Name, playerId, player.Client.HashedPuid());
 
             if (GameState == GameStates.Starting || GameState == GameStates.Started || GameState == GameStates.NotStarted)

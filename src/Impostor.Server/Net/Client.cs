@@ -20,7 +20,7 @@ namespace Impostor.Server.Net
     internal class Client : ClientBase
     {
         private readonly ILogger<Client> _logger;
-        private readonly AntiCheatConfig _antiCheatConfig;
+        public static AntiCheatConfig? _antiCheatConfig;
         private readonly ClientManager _clientManager;
         private readonly GameManager _gameManager;
         private readonly ICustomMessageManager<ICustomRootMessage> _customMessageManager;
@@ -73,7 +73,7 @@ namespace Impostor.Server.Net
                 CheatCategory.ColorLimits => _antiCheatConfig.EnableColorLimitChecks,
                 CheatCategory.NameLimits => _antiCheatConfig.EnableNameLimitChecks,
                 CheatCategory.Ownership => _antiCheatConfig.EnableOwnershipChecks,
-                CheatCategory.AuthError => _antiCheatConfig.ForceAuthenticationOrKick,
+                CheatCategory.AuthError => _antiCheatConfig.ForceAuthenticationOrKick, // Not used
                 CheatCategory.Role => _antiCheatConfig.EnableRoleChecks,
                 CheatCategory.Target => _antiCheatConfig.EnableTargetChecks,
                 CheatCategory.Other => true,
@@ -95,22 +95,7 @@ namespace Impostor.Server.Net
                 }
             }
 
-            if (category != CheatCategory.AuthError)
-            {
-                await Player!.RemoveAsync(DisconnectReason.Custom, "[Imposter AntiCheat+]\n You are kicked because of cheating.\nIf you believe this is a mistake, report issues at discord.gg/tohe");
-            }
-            else
-            {
-                if (message == "No ip matches the client. Failed to find puid of player")
-                {
-                    await Player!.RemoveAsync(DisconnectReason.Custom, "[Imposter AntiCheat+]\n The server failed to auth you. Try disable your http proxy.\nIf you believe this is a mistake, report issues at discord.gg/tohe");
-                }
-                else
-                {
-                    // Not used now
-                    await Player!.RemoveAsync(DisconnectReason.NotAuthorized, string.Empty);
-                }
-            }
+            await Player!.RemoveAsync(DisconnectReason.Custom, "[Imposter AntiCheat+]\n You are kicked because of cheating.\nIf you believe this is a mistake, report issues at discord.gg/tohe");
 
             return true;
         }
