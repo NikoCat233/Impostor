@@ -12,7 +12,6 @@ using Impostor.Server.Net.Inner.Objects;
 using Impostor.Server.Net.Inner.Objects.Components;
 using Impostor.Server.Net.Inner.Objects.GameManager;
 using Impostor.Server.Net.Inner.Objects.ShipStatus;
-using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
