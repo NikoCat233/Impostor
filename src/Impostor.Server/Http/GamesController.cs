@@ -79,14 +79,6 @@ public sealed class GamesController : ControllerBase
         var code = new GameCode(gameId);
         var game = _gameManager.Find(code);
 
-        // If the game was not found, print an error message.
-        var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
-
-        if (token == null)
-        {
-            return BadRequest();
-        }
-
         if (game == null)
         {
             return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.IncorrectGame)));
@@ -105,13 +97,6 @@ public sealed class GamesController : ControllerBase
     [HttpPut]
     public IActionResult Put([FromHeader] AuthenticationHeaderValue authorization)
     {
-        var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
-
-        if (token == null)
-        {
-            return BadRequest();
-        }
-
         return Ok(_hostServer);
     }
 

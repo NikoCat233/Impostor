@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
+using Impostor.Server.Http;
 using Impostor.Server.Net.State;
 
 namespace Impostor.Server.Net
@@ -71,12 +72,7 @@ namespace Impostor.Server.Net
                 return string.Empty;
             }
 
-            var puid = Puid;
-
-            var sha256Bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(puid));
-            var sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", string.Empty).ToLower();
-
-            return string.Concat(sha256Hash.AsSpan(0, 5), sha256Hash.AsSpan(sha256Hash.Length - 4));
+            return TokenController.HashedPuid(Puid);
         }
     }
 }

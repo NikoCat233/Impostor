@@ -39,7 +39,7 @@ public sealed class TokenController : ControllerBase
 
         if (string.IsNullOrEmpty(ipAddress))
         {
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
         }
 
         // InnerSloth Udp network can not handle ipv6. If you need puid auth, do not open your server on ipv6
@@ -48,7 +48,7 @@ public sealed class TokenController : ControllerBase
             if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
             {
                 _logger.Information("IPv6 address for {0} {1} is not allowed", request.Username, ipAddress);
-                return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
             }
         }
 
@@ -65,7 +65,7 @@ public sealed class TokenController : ControllerBase
         if (string.IsNullOrWhiteSpace(token.Content.ProductUserId))
         {
             _logger.Information("{0} apparently had no account", request.Username);
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
         }
 
         if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
@@ -84,7 +84,7 @@ public sealed class TokenController : ControllerBase
         return Ok(Convert.ToBase64String(serialized));
     }
 
-    private string HashedPuid(string puid2)
+    public static string HashedPuid(string puid2)
     {
         if (puid2 == null || puid2 == string.Empty)
         {
