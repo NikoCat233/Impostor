@@ -45,7 +45,7 @@ public sealed class TokenController : ControllerBase
         // InnerSloth Udp network can not handle ipv6. If you need puid auth, do not open your server on ipv6
         if (IPAddress.TryParse(ipAddress, out var parsedIpAddress) && parsedIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
         {
-            if (Client._antiCheatConfig.ForceAuthenticationOrKick)
+            if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
             {
                 _logger.Information("IPv6 address for {0} {1} is not allowed", request.Username, ipAddress);
                 return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
