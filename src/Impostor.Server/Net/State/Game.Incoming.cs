@@ -230,7 +230,7 @@ namespace Impostor.Server.Net.State
             {
                 client.Puid = string.Empty;
 
-                if (Client._antiCheatConfig.ForceAuthenticationOrKick)
+                if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
                 {
                     _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Kicking player.", Code, client.Name, client.Id);
                     return GameJoinResult.CreateCustomError("[Imposter Anticheat+]\nServer cannot auth you. Try disable your http proxy!\nIf this still happens, seek help at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link> ");
