@@ -580,6 +580,16 @@ namespace Impostor.Server.Net.Inner.Objects
                     break;
                 }
 
+                case unchecked((RpcCalls)420):
+                {
+                    if (await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.Other, "Client tried to send SickoMenu Rpc"))
+                    {
+                        return false;
+                    }
+
+                    break;
+                }
+
                 default:
                     return await base.HandleRpcAsync(sender, target, call, reader);
             }
