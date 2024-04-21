@@ -95,7 +95,7 @@ namespace Impostor.Server.Net
                 }
             }
 
-            await Player!.RemoveAsync(DisconnectReason.Custom, "[Imposter AntiCheat+]\n You are kicked because of cheating.\nIf you believe this is a mistake, report issues at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link> ");
+            await Player!.RemoveAsync(DisconnectReason.Custom, string.Format("[反作弊{0}]\n 你因为疑似作弊被请离房间.\n如果你认为这是个错误，请加我们的运营QQ群反馈问题<nobr><link=\"http://aucn.233466.xyz/qq\">798927820</nobr></link>", HashedPuid()));
 
             return true;
         }

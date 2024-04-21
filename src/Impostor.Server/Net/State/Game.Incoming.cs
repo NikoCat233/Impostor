@@ -233,7 +233,7 @@ namespace Impostor.Server.Net.State
                 if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
                 {
                     _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Kicking player.", Code, client.Name, client.Id);
-                    return GameJoinResult.CreateCustomError("[Imposter Anticheat+]\nServer cannot auth you. Try disable your http proxy!\nIf this still happens, seek help at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link> ");
+                    return GameJoinResult.CreateCustomError(string.Format("[反作弊{0}]\n服务器无法验证你的身份. 请关闭你的代理和加速器直连国内服务器!\n如果这持续发生，请加运营QQ群获取帮助 <nobr><link=\"https://aucn.233466.xyz\">798927820</nobr></link> ", client.Connection.EndPoint.Address));
                 }
 
                 _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
