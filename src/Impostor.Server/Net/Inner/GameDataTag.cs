@@ -11,6 +11,6 @@ namespace Impostor.Server.Net.Inner
         ChangeSettingsFlag = 8,
         ConsoleDeclareClientPlatformFlag = 205,
         PS4RoomRequest = 206,
-        XboxDeclareXuid = 207
+        XboxDeclareXuid = 207,
     }
 }

@@ -86,7 +86,7 @@ namespace Impostor.Server.Net.State
 
                 if (!sender.IsHost && sender.Game.IsHostAuthoritive && tag != GameDataTag.RpcFlag && tag != GameDataTag.DataFlag)
                 {
-                    _logger.LogInformation("Got GameData tag from {0} of type {1}", sender.Client.Name, tag);
+                    _logger.LogDebug("{0} - Got GameData tag from {1} of type {2}", Code, sender.Client.Name, tag);
                 }
 
                 switch (tag)
@@ -272,9 +272,14 @@ namespace Impostor.Server.Net.State
                         if (GameState != GameStates.Starting)
                         {
                             _logger.LogWarning("{0} - Player {1} ({2}) tried to send ReadyFlag but game is not starting.", Code, sender.Client.Name, sender.Client.Id);
+
+                            if (clientId != HostId)
+                            {
+                                return false;
+                            }
                         }
 
-                        _logger.LogTrace("> IsReady {0}", clientId);
+                        _logger.LogTrace("{0} -> IsReady {1}", Code, clientId);
                         break;
                     }
 
