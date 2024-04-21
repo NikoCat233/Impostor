@@ -34,7 +34,16 @@ public sealed class TokenController : ControllerBase
 
         if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedIps))
         {
-            ipAddress = forwardedIps.First();
+            var forwardedIp = forwardedIps.First()!.Split(',').Select(ip => ip.Trim()).FirstOrDefault();
+            if (!string.IsNullOrEmpty(forwardedIp))
+            {
+                ipAddress = forwardedIp;
+            }
+        }
+
+        if (string.IsNullOrEmpty(ipAddress))
+        {
+            ipAddress = Request.HttpContext.Connection.RemoteIpAddress?.ToString();
         }
 
         if (string.IsNullOrEmpty(ipAddress))
