@@ -31,7 +31,7 @@ namespace Impostor.Api.Config
         public bool EnableTargetChecks { get; set; } = true;
 
         // Set 0 = no limit
-        public int MaxOnlineFromSameIp { get; set; } = 1;
+        public int MaxOnlineFromSameIp { get; set; } = 0;
 
         public bool ForbidProtocolExtensions { get; set; } = true;
     }
