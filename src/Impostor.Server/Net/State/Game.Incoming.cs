@@ -180,7 +180,7 @@ namespace Impostor.Server.Net.State
                 {
                     if (count >= Client._antiCheatConfig.MaxOnlineFromSameIp)
                     {
-                        return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
+                        return GameJoinResult.CreateCustomError(string.Format("[反作弊]\n检测到多重登录\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
                     }
 
                     ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = count + 1;
