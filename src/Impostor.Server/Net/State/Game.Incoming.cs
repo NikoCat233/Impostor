@@ -174,6 +174,24 @@ namespace Impostor.Server.Net.State
                 return GameJoinResult.FromError(GameJoinError.Banned);
             }
 
+            if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0)
+            {
+                if (ClientManager._onlineCount.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var count))
+                {
+                    if (count >= Client._antiCheatConfig.MaxOnlineFromSameIp)
+                    {
+                        return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
+                    }
+
+                    ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = count + 1;
+                }
+                else
+                {
+                    ClientManager._onlineCount.TryAdd(client.Connection.EndPoint.Address.ToString(), 1);
+                    ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = 1;
+                }
+            }
+
             var player = client.Player;
 
             // Check if the player is running the same version as the host
