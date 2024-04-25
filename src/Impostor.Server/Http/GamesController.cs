@@ -81,7 +81,7 @@ public sealed class GamesController : ControllerBase
 
         if (game == null)
         {
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.IncorrectGame)));
+            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
         }
 
         return Ok(HostServer.From(game.PublicIp));
