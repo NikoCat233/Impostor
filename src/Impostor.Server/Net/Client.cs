@@ -181,6 +181,15 @@ namespace Impostor.Server.Net
                             break;
                     }
 
+                    if (result.Error is not GameJoinError.None)
+                    {
+                        _logger.LogInformation("Client ({0}){1}({2}) failed to join game {3} with error {4}.", Id, Name, Connection.EndPoint.Address.ToString(), gameCode, result.Error);
+                        if (result.Error is GameJoinError.Custom)
+                        {
+                            _logger.LogInformation("Client {0} Custom Error : {1}", Id, result.Message!.Replace("\n", "\\n"));
+                        }
+                    }
+
                     break;
                 }
 
