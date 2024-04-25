@@ -6,6 +6,7 @@ using Impostor.Api.Net;
 using Impostor.Hazel;
 using Impostor.Server.Events;
 using Impostor.Server.Net.Hazel;
+using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 
 namespace Impostor.Server.Net.State
@@ -34,6 +35,21 @@ namespace Impostor.Server.Net.State
             if (!_players.TryRemove(playerId, out var player))
             {
                 return false;
+            }
+
+            if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0)
+            {
+                if (ClientManager._onlineCount.TryGetValue(player.Client.Connection.EndPoint.Address.ToString(), out var count))
+                {
+                    if (count == 1)
+                    {
+                        ClientManager._onlineCount.Remove(player.Client.Connection.EndPoint.Address.ToString());
+                    }
+                    else
+                    {
+                        ClientManager._onlineCount[player.Client.Connection.EndPoint.Address.ToString()]--;
+                    }
+                }
             }
 
             _logger.LogInformation("{0} - Player {1} ({2}) has left. hashpuid : {3}", Code, player.Client.Name, playerId, player.Client.HashedPuid());

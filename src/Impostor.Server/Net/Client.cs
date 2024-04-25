@@ -37,7 +37,7 @@ namespace Impostor.Server.Net
 
         public override async ValueTask<bool> ReportCheatAsync(CheatContext context, CheatCategory category, string message)
         {
-            if (!_antiCheatConfig.Enabled)
+            if (!_antiCheatConfig!.Enabled)
             {
                 return false;
             }
