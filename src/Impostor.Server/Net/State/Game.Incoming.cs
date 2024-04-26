@@ -206,7 +206,7 @@ namespace Impostor.Server.Net.State
                 if (count > Client._antiCheatConfig!.MaxOnlineFromSameIp)
                 {
                     _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
-                    return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
+                    return GameJoinResult.CreateCustomError(string.Format("[反作弊]\n检测到多重登录.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
                 }
             }
 
