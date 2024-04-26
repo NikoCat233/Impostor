@@ -174,24 +174,6 @@ namespace Impostor.Server.Net.State
                 return GameJoinResult.FromError(GameJoinError.Banned);
             }
 
-            if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0)
-            {
-                if (ClientManager._onlineCount.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var count))
-                {
-                    if (count >= Client._antiCheatConfig.MaxOnlineFromSameIp)
-                    {
-                        return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
-                    }
-
-                    ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = count + 1;
-                }
-                else
-                {
-                    ClientManager._onlineCount.TryAdd(client.Connection.EndPoint.Address.ToString(), 1);
-                    ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = 1;
-                }
-            }
-
             var player = client.Player;
 
             // Check if the player is running the same version as the host
@@ -237,6 +219,26 @@ namespace Impostor.Server.Net.State
                 isNew = true;
                 player = clientPlayer;
                 client.Player = clientPlayer;
+            }
+
+            // Rejoining clients need to bypass this limit with isNew
+            if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0 && isNew)
+            {
+                if (ClientManager._onlineCount.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var count))
+                {
+                    if (count >= Client._antiCheatConfig.MaxOnlineFromSameIp)
+                    {
+                        _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
+                        return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
+                    }
+
+                    ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = count + 1;
+                }
+                else
+                {
+                    ClientManager._onlineCount.TryAdd(client.Connection.EndPoint.Address.ToString(), 1);
+                    ClientManager._onlineCount[client.Connection.EndPoint.Address.ToString()] = 1;
+                }
             }
 
             if (ClientManager._puids.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var puid))
