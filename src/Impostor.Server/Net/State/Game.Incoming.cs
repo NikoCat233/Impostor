@@ -201,7 +201,7 @@ namespace Impostor.Server.Net.State
             // Rejoining clients need to bypass this limit with isNew
             if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0)
             {
-                var count = _clientManager.Clients.Count(x => x.Connection.EndPoint.Address.ToString() == client.Connection.EndPoint.Address.ToString() && x.Player != null);
+                var count = _clientManager.Clients.Count(x => x.Connection.EndPoint.Address.ToString() == client.Connection.EndPoint.Address.ToString() && x.Connection.IsConnected);
 
                 if (count > Client._antiCheatConfig!.MaxOnlineFromSameIp)
                 {
