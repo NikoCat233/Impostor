@@ -84,10 +84,7 @@ namespace Impostor.Server.Net.State
                 using var reader = parent.ReadMessage();
                 var tag = (GameDataTag)reader.Tag;
 
-                if (!sender.IsHost && sender.Game.IsHostAuthoritive && tag != GameDataTag.RpcFlag && tag != GameDataTag.DataFlag)
-                {
-                    _logger.LogDebug("{0} - Got GameData tag from {1} of type {2}", Code, sender.Client.Name, tag);
-                }
+                _logger.LogDebug("{0} - Got GameData tag from {1} of type {2}", Code, sender.Client.Id, tag);
 
                 switch (tag)
                 {
@@ -96,6 +93,7 @@ namespace Impostor.Server.Net.State
                         var netId = reader.ReadPackedUInt32();
                         if (_allObjectsFast.TryGetValue(netId, out var obj))
                         {
+                            _logger.LogDebug("Received DataFlag for {0} ({1})", obj.GetType().Name, netId);
                             await obj.DeserializeAsync(sender, target, reader, false);
                         }
                         else
@@ -111,7 +109,9 @@ namespace Impostor.Server.Net.State
                         var netId = reader.ReadPackedUInt32();
                         if (_allObjectsFast.TryGetValue(netId, out var obj))
                         {
-                            if (!await obj.HandleRpcAsync(sender, target, (RpcCalls)reader.ReadByte(), reader))
+                            RpcCalls callId = (RpcCalls)reader.ReadByte();
+                            _logger.LogDebug("Received RpcFlag for {0} ({1}), callId {2}", obj.GetType().Name, netId, callId);
+                            if (!await obj.HandleRpcAsync(sender, target, callId, reader))
                             {
                                 parent.RemoveMessage(reader);
                                 continue;
@@ -236,12 +236,14 @@ namespace Impostor.Server.Net.State
                     {
                         // Sender is only allowed to change his own scene.
                         var clientId = reader.ReadPackedInt32();
+                        var scene = reader.ReadString();
                         if (clientId != sender.Client.Id)
                         {
                             _logger.LogWarning(
                                 "Player {0} ({1}) tried to send SceneChangeFlag for another player.",
                                 sender.Client.Name,
                                 sender.Client.Id);
+                            _logger.LogTrace("> Scene {0} try to {1}", clientId, scene);
 
                             if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SceneChangeFlag)), CheatCategory.Ownership, "Tried to send SceneChangeFlag as other player."))
                             {
@@ -251,9 +253,9 @@ namespace Impostor.Server.Net.State
                             return false;
                         }
 
-                        sender.Scene = reader.ReadString();
+                        sender.Scene = scene;
 
-                        _logger.LogTrace("> Scene {0} to {1}", clientId, sender.Scene);
+                        _logger.LogTrace("> Scene {0} to {1}", clientId, scene);
                         break;
                     }
 

@@ -4,13 +4,13 @@ namespace Impostor.Api.Config
     {
         public const string Section = "AntiCheat";
 
-        public bool Enabled { get; set; } = true;
+        public bool Enabled { get; set; } = false;
 
         public bool BanIpFromGame { get; set; } = true;
 
         public bool NoBanAuthoritive { get; set; } = false;
 
-        public CheatingHostMode AllowCheatingHosts { get; set; } = CheatingHostMode.Never;
+        public CheatingHostMode AllowCheatingHosts { get; set; } = CheatingHostMode.Always;
 
         public bool EnableGameFlowChecks { get; set; } = true;
 

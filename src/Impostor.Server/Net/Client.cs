@@ -134,6 +134,12 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.JoinGame:
                 {
+                    if (Player != null)
+                    {
+                        await DisconnectAsync(DisconnectReason.Custom, "Client is already in a game.");
+                        return;
+                    }
+
                     Message01JoinGameC2S.Deserialize(reader, out var gameCode);
 
                     var game = _gameManager.Find(gameCode);
@@ -247,6 +253,7 @@ namespace Impostor.Server.Net
                     if (verified && Player != null)
                     {
                         // Broadcast packet to all other players.
+                        _logger.LogTrace("{0} - Client {1} broadcast GameData packet.", Player.Game.Code, Id);
                         using (var writer = MessageWriter.Get(messageType))
                         {
                             if (toPlayer)

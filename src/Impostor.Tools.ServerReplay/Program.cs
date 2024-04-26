@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -31,6 +31,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ObjectPool;
 using Serilog;
 using ILogger = Serilog.ILogger;
+using System.Linq;
+using Impostor.Api.Net.Manager;
 
 namespace Impostor.Tools.ServerReplay
 {
@@ -51,14 +53,15 @@ namespace Impostor.Tools.ServerReplay
         private static async Task Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
-                // .MinimumLevel.Verbose()
-                .MinimumLevel.Debug()
+                 .MinimumLevel.Verbose()
                 .WriteTo.Console()
                 .CreateLogger();
 
+             var dir = new DirectoryInfo(@"D:\Impostor\sessions");
+
             var stopwatch = Stopwatch.StartNew();
 
-            foreach (var file in Directory.GetFiles(args[0], "*.dat"))
+            foreach (var file in dir.GetFiles("*.dat").ToList().Select(f => f.FullName))
             {
                 // Clear.
                 Connections.Clear();
@@ -111,6 +114,7 @@ namespace Impostor.Tools.ServerReplay
             services.AddSingleton<IGameCodeFactory>(p => p.GetRequiredService<MockGameCodeFactory>());
 
             services.AddSingleton<ClientManager>();
+            services.AddSingleton<ICompatibilityManager, CompatibilityManager>();
             services.AddSingleton<IClientFactory, ClientFactory<Client>>();
             services.AddSingleton<IEventManager, EventManager>();
 
@@ -184,8 +188,15 @@ namespace Impostor.Tools.ServerReplay
                         reason = reader.ReadString();
                     }
 
-                    await Connections[clientId].Client!.HandleDisconnectAsync(reason);
-                    Connections.Remove(clientId);
+                    if (Connections.ContainsKey(clientId))
+                    {
+                        await Connections[clientId].Client!.HandleDisconnectAsync(reason!);
+                        Connections.Remove(clientId);
+                    }
+                    else
+                    {
+                        Logger.Information($"Client {clientId} disconnected: {reason}");
+                    }
                     break;
 
                 case RecordedPacketType.Message:
