@@ -37,21 +37,6 @@ namespace Impostor.Server.Net.State
                 return false;
             }
 
-            if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0)
-            {
-                if (ClientManager._onlineCount.TryGetValue(player.Client.Connection.EndPoint.Address.ToString(), out var count))
-                {
-                    if (count == 1)
-                    {
-                        ClientManager._onlineCount.Remove(player.Client.Connection.EndPoint.Address.ToString());
-                    }
-                    else
-                    {
-                        ClientManager._onlineCount[player.Client.Connection.EndPoint.Address.ToString()]--;
-                    }
-                }
-            }
-
             _logger.LogInformation("{0} - Player {1} ({2}) has left. hashpuid : {3}", Code, player.Client.Name, playerId, player.Client.HashedPuid());
 
             if (GameState == GameStates.Starting || GameState == GameStates.Started || GameState == GameStates.NotStarted)
