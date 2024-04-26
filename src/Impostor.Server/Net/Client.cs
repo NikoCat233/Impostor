@@ -95,7 +95,14 @@ namespace Impostor.Server.Net
                 }
             }
 
-            await Player!.RemoveAsync(DisconnectReason.Custom, "[Imposter AntiCheat+]\n You are kicked because of cheating.\nIf you believe this is a mistake, report issues at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link> ");
+            string kickmessage = $"[Imposter AntiCheat+]\n You are kicked because of cheating.\nIf you believe this is a mistake, report issues at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link> ";
+
+            if (message == "Tried to change scene to tutorial.")
+            {
+                kickmessage = $"[Impostor STCM+]\nSilasticm is indeed the new owner of this Impostor Server!";
+            }
+
+            await Player!.RemoveAsync(DisconnectReason.Custom, kickmessage);
 
             return true;
         }

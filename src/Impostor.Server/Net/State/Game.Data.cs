@@ -236,6 +236,15 @@ namespace Impostor.Server.Net.State
                     {
                         // Sender is only allowed to change his own scene.
                         var clientId = reader.ReadPackedInt32();
+                        var scene = reader.ReadString();
+
+                        if (scene == string.Empty || scene == null)
+                        {
+                            _logger.LogWarning("Player {0} ({1}) tried to send SceneChangeFlag with null scene. Kicking.", sender.Client.Name, sender.Client.Id);
+                            await sender.Client.DisconnectAsync(DisconnectReason.Error);
+                            return false;
+                        }
+
                         if (clientId != sender.Client.Id)
                         {
                             _logger.LogWarning(
@@ -251,7 +260,19 @@ namespace Impostor.Server.Net.State
                             return false;
                         }
 
-                        sender.Scene = reader.ReadString();
+                        if (scene.ToLower() == "tutorial")
+                        {
+                            _logger.LogWarning("Player {0} ({1}) tried to change scene to tutorial. Kicking.", sender.Client.Name, sender.Client.Id);
+
+                            if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SceneChangeFlag)), CheatCategory.Other, "Tried to change scene to tutorial."))
+                            {
+                                return false;
+                            }
+
+                            return false;
+                        }
+
+                        sender.Scene = scene;
 
                         _logger.LogTrace("> Scene {0} to {1}", clientId, sender.Scene);
                         break;
