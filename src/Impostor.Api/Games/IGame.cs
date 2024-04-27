@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Impostor.Api.Innersloth;
@@ -63,10 +63,21 @@ namespace Impostor.Api.Games
         void BanIp(IPAddress ipAddress);
 
         /// <summary>
+        ///     Adds an puid to the ban list of this game.
+        ///     Prevents all future joins from this puid.
+        ///     This does not kick the player with that puid from the lobby.
+        /// </summary>
+        /// <param name="puid">
+        ///     The ProductUserId to ban.
+        /// </param>
+        void BanPuid(string puid);
+
+        /// <summary>
         ///     Syncs the internal <see cref="IGameOptions" /> to all players.
         ///     Necessary to do if you modified it, otherwise it won't be used.
         /// </summary>
         /// <returns>A <see cref="ValueTask" /> representing the asynchronous operation.</returns>
+        ///
         ValueTask SyncSettingsAsync();
 
         /// <summary>

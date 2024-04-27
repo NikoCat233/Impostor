@@ -25,6 +25,17 @@ namespace Impostor.Server.Net.State
             _bannedIps.Add(ipAddress);
         }
 
+        public void BanPuid(string puid)
+        {
+            if (puid == null || puid == string.Empty)
+            {
+                return;
+            }
+
+            // Normally a puid is unique for a user and it should not be leaked. So we can ban based on puid.
+            _bannedPuids.Add(puid);
+        }
+
         public async ValueTask SyncSettingsAsync()
         {
             if (Host?.Character == null)
