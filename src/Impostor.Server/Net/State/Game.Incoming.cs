@@ -172,6 +172,7 @@ namespace Impostor.Server.Net.State
             // Check if the IP of the player is banned.
             if (_bannedIps.Contains(client.Connection.EndPoint.Address))
             {
+                _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is ip banned previously.");
                 return GameJoinResult.FromError(GameJoinError.Banned);
             }
 
@@ -250,6 +251,15 @@ namespace Impostor.Server.Net.State
                 }
 
                 _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+            }
+
+            if (client.Puid != string.Empty)
+            {
+                if (_bannedPuids.Contains(client.Puid))
+                {
+                    _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is puid banned previously.");
+                    return GameJoinResult.FromError(GameJoinError.Banned);
+                }
             }
 
             // Check current player state.

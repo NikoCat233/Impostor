@@ -6,7 +6,6 @@ using Impostor.Api.Net;
 using Impostor.Hazel;
 using Impostor.Server.Events;
 using Impostor.Server.Net.Hazel;
-using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 
 namespace Impostor.Server.Net.State
@@ -70,6 +69,7 @@ namespace Impostor.Server.Net.State
             if (isBan)
             {
                 BanIp(player.Client.Connection.EndPoint.Address);
+                BanPuid(player.Client.Puid);
             }
 
             await _eventManager.CallAsync(new GamePlayerLeftEvent(this, player, isBan));

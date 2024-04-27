@@ -92,6 +92,7 @@ namespace Impostor.Server.Net
                 if (!(_antiCheatConfig.NoBanAuthoritive && Player.Client.GameVersion.HasDisableServerAuthorityFlag))
                 {
                     Player?.Game.BanIp(Connection.EndPoint.Address);
+                    Player?.Game.BanPuid(Puid);
                 }
             }
 
