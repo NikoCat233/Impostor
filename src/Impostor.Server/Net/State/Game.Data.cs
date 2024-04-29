@@ -400,7 +400,7 @@ namespace Impostor.Server.Net.State
                         await _eventManager.CallAsync(new PlayerSpawnedEvent(this, player, control));
                     }
 
-                    _logger.LogInformation("{0} - Player {1} ({2}) spawned as {3}, hashpuid is {4}", Code, sender.Client.Name, sender.Client.Id, control.PlayerId, sender.Client.HashedPuid());
+                    _logger.LogInformation("{0} - Player {1} ({2}) spawned as {3} by {4}, hashpuid is {5}", Code, player!.Client.Name, player!.Client.Id, control.PlayerId, sender.Client.Id, player!.Client.HashedPuid());
                     break;
                 }
 
