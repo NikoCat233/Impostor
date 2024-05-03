@@ -7,6 +7,7 @@ using Impostor.Api.Net.Inner.Objects;
 using Impostor.Api.Net.Inner.Objects.Components;
 using Impostor.Api.Net.Messages.Rpcs;
 using Impostor.Server.Events.Player;
+using Microsoft.Extensions.Logging;
 
 namespace Impostor.Server.Net.Inner.Objects
 {
@@ -86,17 +87,20 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             if (!PlayerInfo.IsImpostor)
             {
-                throw new ImpostorProtocolException("Tried to murder a player, but murderer was not the impostor.");
+                _logger.LogError("Tried to murder a player, but murderer was not the impostor.");
+                return;
             }
 
             if (PlayerInfo.IsDead)
             {
-                throw new ImpostorProtocolException("Tried to murder a player, but murderer was not alive.");
+                _logger.LogError("Tried to murder a player, but murderer was not alive.");
+                return;
             }
 
             if (target.PlayerInfo.IsDead)
             {
-                throw new ImpostorProtocolException("Tried to murder a player, but target was not alive.");
+                _logger.LogError("Tried to murder a player, but target was not alive.");
+                return;
             }
 
             if (!result.IsFailed())
@@ -120,7 +124,8 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             if (target.PlayerInfo.RoleType == RoleTypes.GuardianAngel)
             {
-                throw new ImpostorProtocolException("Tried to protect another Guardian Angel");
+                _logger.LogError("Tried to murder a player, but target was not alive.");
+                return;
             }
 
             ((InnerPlayerControl)target).Protect(this);
@@ -134,7 +139,8 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             if (PlayerInfo.IsDead)
             {
-                throw new ImpostorProtocolException("Tried to exile a player, but target was not alive.");
+                _logger.LogError("Tried to murder a player, but target was not alive.");
+                return;
             }
 
             // Update player.
