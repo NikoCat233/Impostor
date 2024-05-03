@@ -302,6 +302,8 @@ namespace Impostor.Server.Net.State
                 _logger.LogInformation("{0} - Host {1} ({2}) rejoined. Room Authority : {3}", Code, sender.Client.Name, sender.Client.Id, IsHostAuthoritive);
                 GameState = GameStates.NotStarted;
 
+                _errroVL.Clear();
+
                 // Spawn the host.
                 await HandleJoinGameNewAsync(sender, false);
 
