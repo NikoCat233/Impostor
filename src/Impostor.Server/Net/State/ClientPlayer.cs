@@ -84,7 +84,7 @@ namespace Impostor.Server.Net.State
                 {
                     _logger.LogInformation("{0} - Player {1} spawn timed out, kicking.", Game.Code, Client.Id);
 
-                    await KickAsync();
+                    await RemoveAsync(DisconnectReason.Custom, "[Impostor AntiCheat+] Host didn't spawn you in time\nMaybe Host is too laggy?\nReport issues to your host or Seek help at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link>");
                 }
             }
             catch (Exception e)
