@@ -447,6 +447,10 @@ namespace Impostor.Server.Net.State
                     break;
                 }
 
+                case InnerCustomNetworkTransform:
+                case InnerPlayerPhysics:
+                    break;
+
                 case InnerMeetingHud meetingHud:
                 {
                     foreach (var player in _players.Values)
@@ -465,7 +469,7 @@ namespace Impostor.Server.Net.State
                 {
                     _logger.LogWarning("{0} - Spawned a Net object that server doesnt recoginze. {1} for {2} by {3}", Code, netObj.NetId, netObj.OwnerId, sender.Client.Id);
 
-                    await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.ProtocolExtension, "Spawned a Net object that server doesnt recoginze.");
+                    // await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.ProtocolExtension, "Spawned a Net object that server doesnt recoginze.");
                     break;
                 }
             }
