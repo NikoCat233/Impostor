@@ -353,14 +353,14 @@ namespace Impostor.Server.Net.State
                     {
                         if (vl >= 12)
                         {
-                            await sender.RemoveAsync(DisconnectReason.Custom, "Server failed to handle your packet (GameData Host).\nThis maybe a server-side bug.\nSorry for any inconvenience caused.");
+                            await sender.RemoveAsync(DisconnectReason.Custom, "服务器多次无法处理你的包 (GameData Host).\n这可能是服务器bug.\n造成的不便敬请谅解.\n加我们的运营QQ群反馈问题<nobr><link=\"http://aucn.233466.xyz/qq\">798927820</nobr></link>");
                         }
                     }
                     else
                     {
                         if (vl >= 3)
                         {
-                            await sender.RemoveAsync(DisconnectReason.Custom, "Server failed to handle your packet (GameData).\nThis maybe a server-side bug.\nSorry for any inconvenience caused.");
+                            await sender.RemoveAsync(DisconnectReason.Custom, "服务器多次无法处理你的包 (GameData).\n这可能是服务器bug.\n造成的不便敬请谅解.\n加我们的运营QQ群反馈问题<nobr><link=\"http://aucn.233466.xyz/qq\">798927820</nobr></link>");
                         }
                     }
 
