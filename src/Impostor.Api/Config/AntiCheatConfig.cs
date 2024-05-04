@@ -34,5 +34,7 @@ namespace Impostor.Api.Config
         public int MaxOnlineFromSameIp { get; set; } = 0;
 
         public bool ForbidProtocolExtensions { get; set; } = true;
+
+        public bool ForcePassCmdToHost { get; set; } = false;
     }
 }
