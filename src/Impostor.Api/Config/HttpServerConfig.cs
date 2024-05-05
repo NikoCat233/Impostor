@@ -24,4 +24,8 @@ public class HttpServerConfig
     /// </summary>
     /// For port forwarding purposes, this is a TCP port.
     public ushort ListenPort { get; set; } = 22023;
+
+    public bool UseEacCheck { get; set; } = false;
+
+    public string EacToken { get; set; } = string.Empty;
 }

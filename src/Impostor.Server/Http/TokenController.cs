@@ -77,6 +77,12 @@ public sealed class TokenController : ControllerBase
             return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
         }
 
+        if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId)))
+        {
+            _logger.Warning("{0} ({1}) ({2}) is banned by EAC", request.Username);
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.Hacking)));
+        }
+
         if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
         {
             _logger.Information("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
