@@ -258,7 +258,7 @@ namespace Impostor.Server.Net.State
                 if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(client.Puid))
                 {
                     _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is eac banned previously.");
-                    return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nYou are banned by EAC previously.\n {0}", client.HashedPuid()));
+                    return GameJoinResult.CreateCustomError(string.Format("[反作弊{0}]\n你已被TOHE EAC联合封禁", client.HashedPuid()));
                 }
 
                 if (_bannedPuids.Contains(client.Puid))
