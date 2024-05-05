@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
+using Impostor.Server.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -13,8 +14,10 @@ namespace Impostor.Server.Net
     {
         private readonly ILogger<MatchmakerService> _logger;
         private readonly ServerConfig _serverConfig;
-        private readonly HttpServerConfig _httpServerConfig;
+        public static HttpServerConfig _httpServerConfig;
         private readonly Matchmaker _matchmaker;
+        private Timer _timer;
+        public static EACFunctions _eacFunctions;
 
         public MatchmakerService(
             ILogger<MatchmakerService> logger,
@@ -26,6 +29,7 @@ namespace Impostor.Server.Net
             _serverConfig = serverConfig.Value;
             _httpServerConfig = httpServerConfig.Value;
             _matchmaker = matchmaker;
+            _eacFunctions = new EACFunctions();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -55,12 +59,32 @@ namespace Impostor.Server.Net
                 _logger.LogWarning("Your HTTP server is exposed to the public internet, we recommend setting up a reverse proxy and enabling HTTPS");
                 _logger.LogWarning("See https://github.com/Impostor/Impostor/blob/master/docs/Http-server.md for instructions");
             }
+
+            _timer = new Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromMinutes(15));
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogWarning("Matchmaker is shutting down!");
+            _timer?.Change(Timeout.Infinite, 0);
+
             await _matchmaker.StopAsync();
+        }
+
+        private void TimerCallback(object state)
+        {
+            try
+            {
+                if (_httpServerConfig.UseEacCheck)
+                {
+                    _logger.LogInformation("Checking EAC data...");
+                    _eacFunctions.UpdateEACListFromURLAsync(_httpServerConfig.EacToken).GetAwaiter().GetResult();  // 更新EACList
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error occurred in the timer callback: " + ex.Message);
+            }
         }
     }
 }

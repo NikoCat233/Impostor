@@ -50,3 +50,6 @@ src/Impostor.Server/packages.lock.json
 src/Impostor.Tests/packages.lock.json
 src/Impostor.Tools.Proxy/packages.lock.json
 src/Impostor.Tools.ServerReplay/packages.lock.json
+src/Impostor.Server/config.json
+src/Impostor.Server/config.json
+src/Impostor.Server/config.json
