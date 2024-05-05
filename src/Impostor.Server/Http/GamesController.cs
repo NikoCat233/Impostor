@@ -145,13 +145,21 @@ public sealed class GamesController : ControllerBase
     public class MatchmakerError
     {
         [SetsRequiredMembers]
-        public MatchmakerError(DisconnectReason reason)
+        public MatchmakerError(DisconnectReason reason, SanctionReason sanctionReason = SanctionReason.None, DateTimeOffset? endsAt = null)
         {
             Reason = reason;
+            SanctionReason = sanctionReason;
+            EndsAt = endsAt;
         }
 
         [JsonPropertyName("Reason")]
         public required DisconnectReason Reason { get; init; }
+
+        [JsonPropertyName("SanctionReason")]
+        public required SanctionReason SanctionReason { get; init; }
+
+        [JsonPropertyName("EndsAt")]
+        public required DateTimeOffset? EndsAt { get; init; }
     }
 
     private class GameListing
