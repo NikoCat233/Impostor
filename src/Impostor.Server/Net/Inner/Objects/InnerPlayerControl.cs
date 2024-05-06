@@ -662,9 +662,20 @@ namespace Impostor.Server.Net.Inner.Objects
 
                 case unchecked((RpcCalls)42069):
                 {
-                    if (await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.Other, "Client tried to send AUM Rpc"))
+                    try
                     {
-                        return false;
+                        var id = reader.ReadByte();
+                        var flag = id == sender.Character!.PlayerId;
+
+                        if (flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.Other, "Client tried to send AUM Rpc"))
+                        {
+                            return false;
+                        }
+                    }
+
+                    // Do nothing
+                    catch
+                    {
                     }
 
                     break;
@@ -672,7 +683,8 @@ namespace Impostor.Server.Net.Inner.Objects
 
                 case unchecked((RpcCalls)420):
                 {
-                    if (await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.Other, "Client tried to send SickoMenu Rpc"))
+                    var flag = reader.Length - reader.Position == 0;
+                    if (flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.Other, "Client tried to send SickoMenu Rpc"))
                     {
                         return false;
                     }
