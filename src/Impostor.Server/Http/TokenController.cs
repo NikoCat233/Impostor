@@ -80,7 +80,7 @@ public sealed class TokenController : ControllerBase
         if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId)))
         {
             _logger.Warning("{0} ({1}) ({2}) is banned by EAC", request.Username);
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.Hacking)));
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.Sanctions, SanctionReason.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
         }
 
         if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
