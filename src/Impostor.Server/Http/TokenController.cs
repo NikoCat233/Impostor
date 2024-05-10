@@ -63,6 +63,8 @@ public sealed class TokenController : ControllerBase
             }
         }
 
+        var notLocalFc = "";
+
         if (Request.Headers.ContainsKey("Authorization"))
         {
             try
@@ -76,6 +78,7 @@ public sealed class TokenController : ControllerBase
                     // Extract the Bearer token from the Authorization header
                     var bearerToken = authHeader.Substring("Bearer ".Length);
                     var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+                    notLocalFc = friendcode;
 
                     if (resultStatus == DisconnectReason.Unknown)
                     {
@@ -137,12 +140,12 @@ public sealed class TokenController : ControllerBase
         if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
         {
             _logger.Information("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
-            ClientManager._puids.TryAdd(ipAddress.ToString(), request.ProductUserId);
+            ClientManager._puids.TryAdd(ipAddress.ToString(), new UserPayload(token.Content.ProductUserId, notLocalFc));
         }
-        else if (ClientManager._puids[ipAddress.ToString()] != request.ProductUserId)
+        else if (ClientManager._puids[ipAddress.ToString()].ProductUserId != request.ProductUserId)
         {
-            _logger.Information("{0} ({1}) ({2}) has been updated to ({3})", request.Username, HashedPuid(ClientManager._puids[ipAddress.ToString()]), ipAddress, HashedPuid(request.ProductUserId));
-            ClientManager._puids[ipAddress.ToString()] = request.ProductUserId;
+            _logger.Information("{0} ({1}) ({2}) has been updated to ({3})", request.Username, HashedPuid(ClientManager._puids[ipAddress.ToString()].ProductUserId), ipAddress, HashedPuid(request.ProductUserId));
+            ClientManager._puids[ipAddress.ToString()].ProductUserId = request.ProductUserId;
         }
 
         // Wrap into a Base64 sandwich
@@ -313,6 +316,18 @@ public sealed class TokenController : ControllerBase
 
         [JsonPropertyName("Hash")]
         public required string Hash { get; init; }
+    }
+
+    public class UserPayload
+    {
+        public UserPayload(string productUserId, string friendCode)
+        {
+            ProductUserId = productUserId;
+            FriendCode = friendCode;
+        }
+
+        public string ProductUserId { get; set; }
+        public string FriendCode { get; set; }
     }
 
     /// <summary>
