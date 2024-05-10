@@ -235,14 +235,16 @@ namespace Impostor.Server.Net.State
                 client.Player = clientPlayer;
             }
 
-            if (ClientManager._puids.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var puid))
+            if (ClientManager._puids.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var authData))
             {
-                client.Puid = puid;
+                client.Puid = authData.ProductUserId;
+                client.FriendCode = authData.FriendCode;
                 _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3}", Code, client.Name, client.Id, client.HashedPuid());
             }
             else
             {
                 client.Puid = string.Empty;
+                client.FriendCode = string.Empty;
 
                 if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
                 {

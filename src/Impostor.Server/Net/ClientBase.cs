@@ -28,6 +28,8 @@ namespace Impostor.Server.Net
 
         public string Puid { get; set; }
 
+        public string FriendCode { get; set; }
+
         public Language Language { get; }
 
         public QuickChatModes ChatMode { get; }
