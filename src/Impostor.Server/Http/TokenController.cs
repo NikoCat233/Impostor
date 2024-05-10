@@ -1,12 +1,15 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Impostor.Api.Innersloth;
 using Impostor.Server.Net;
 using Impostor.Server.Net.Manager;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using static Impostor.Server.Http.GamesController;
@@ -28,7 +31,7 @@ public sealed class TokenController : ControllerBase
     /// <param name="request">Token parameters that need to be put into the token.</param>
     /// <returns>A bare minimum authentication token that the client will accept.</returns>
     [HttpPost]
-    public IActionResult GetToken([FromBody] TokenRequest request)
+    public async Task<IActionResult> GetTokenAsync([FromBody] TokenRequest request)
     {
         var ipAddress = "127.0.0.1";
 
@@ -61,6 +64,29 @@ public sealed class TokenController : ControllerBase
             }
         }
 
+        // Check if the request contains an Authorization header
+        if (Request.Headers.ContainsKey("Authorization"))
+        {
+            // Get the Authorization header
+            var authHeader = Request.Headers["Authorization"].ToString();
+
+            _logger.Information(authHeader);
+
+            // Check if the Authorization header starts with "Bearer "
+            if (authHeader.StartsWith("Bearer "))
+            {
+                // Extract the Bearer token from the Authorization header
+                var bearerToken = authHeader.Substring("Bearer ".Length);
+                var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+
+                _logger.Information(resultStatus.ToString() + " " + puid + " " + friendcode);
+            }
+        }
+        else
+        {
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+        }
+
         var token = new Token
         {
             Content = new TokenPayload
@@ -80,7 +106,7 @@ public sealed class TokenController : ControllerBase
         if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId)))
         {
             _logger.Warning("{0} ({1}) ({2}) is banned by EAC", request.Username);
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.Sanctions, SanctionReason.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(SanctionReasons.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
         }
 
         if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
@@ -98,6 +124,91 @@ public sealed class TokenController : ControllerBase
         var serialized = JsonSerializer.SerializeToUtf8Bytes(token);
         return Ok(Convert.ToBase64String(serialized));
     }
+
+    public async Task<(DisconnectReason disconnectReason, string puid, string friendcode)> SendRequestWithBearerAsync(string bearerToken, string productUserId)
+    {
+        try
+        {
+            // Create a new HttpClient
+            using (var client = new HttpClient())
+            {
+                // Create a new HttpRequestMessage
+                var request = new HttpRequestMessage();
+
+                // Set the method to POST
+                request.Method = HttpMethod.Post;
+
+                // Set the URL
+                string url = "https://matchmaker-eu.among.us/api/user"; // Replace with your URL
+                request.RequestUri = new Uri(url);
+
+                // Set the headers
+                request.Headers.Add("Accept", "text/plain");
+                request.Headers.Add("Authorization", "Bearer " + bearerToken);
+
+                // Set the body
+                var body = new
+                {
+                    Puid = productUserId, // Replace with your Puid
+                    Username = "Impostor", // Replace with your Username
+                    ClientVersion = "50603650", // Replace with your ClientVersion
+                    Language = 13, // Replace with your Language
+                };
+                var bodyJson = JsonSerializer.Serialize(body);
+                var httpContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+
+                // Add the content to the request
+                request.Content = httpContent;
+
+                // Send the request
+                var response = await client.SendAsync(request);
+
+                // Check if the response was successful
+                if (response.IsSuccessStatusCode)
+                {
+                    // Get the response content
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    // Decode the base64 content
+                    var decodedContent = Encoding.UTF8.GetString(Convert.FromBase64String(content));
+
+                    // Parse the JSON content
+                    var jsonDocument = JsonDocument.Parse(decodedContent);
+                    var root = jsonDocument.RootElement;
+
+                    if (root.TryGetProperty("Content", out var contentProperty))
+                    {
+                        if (contentProperty.TryGetProperty("Puid", out var puidProperty))
+                        {
+                            var puidAndFriendcode = puidProperty.GetString().Split(' ');
+                            if (puidAndFriendcode.Length == 2)
+                            {
+                                return (DisconnectReason.Unknown, puidAndFriendcode[0], puidAndFriendcode[1]);
+                            }
+                        }
+                    }
+
+                    throw new Exception("Could not extract Puid from response content.");
+                }
+                else if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    // Handle the Unauthorized error
+                    return (DisconnectReason.NotAuthorized, string.Empty, string.Empty);
+                }
+                else
+                {
+                    // Handle other errors
+                    return (DisconnectReason.ServerError, string.Empty, string.Empty);
+                }
+            }
+        }
+        catch
+        {
+            // Catch any other exceptions
+            return (DisconnectReason.ServerError, string.Empty, string.Empty);
+        }
+    }
+
 
     public static string HashedPuid(string puid2)
     {
