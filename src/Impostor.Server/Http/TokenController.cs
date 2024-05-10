@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Impostor.Api.Innersloth;
 using Impostor.Server.Net;
 using Impostor.Server.Net.Manager;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using static Impostor.Server.Http.GamesController;
@@ -64,22 +63,48 @@ public sealed class TokenController : ControllerBase
             }
         }
 
-        // Check if the request contains an Authorization header
         if (Request.Headers.ContainsKey("Authorization"))
         {
-            // Get the Authorization header
-            var authHeader = Request.Headers["Authorization"].ToString();
-
-            _logger.Information(authHeader);
-
-            // Check if the Authorization header starts with "Bearer "
-            if (authHeader.StartsWith("Bearer "))
+            try
             {
-                // Extract the Bearer token from the Authorization header
-                var bearerToken = authHeader.Substring("Bearer ".Length);
-                var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+                // Get the Authorization header
+                var authHeader = Request.Headers["Authorization"].ToString();
 
-                _logger.Information(resultStatus.ToString() + " " + puid + " " + friendcode);
+                // Check if the Authorization header starts with "Bearer "
+                if (authHeader.StartsWith("Bearer "))
+                {
+                    // Extract the Bearer token from the Authorization header
+                    var bearerToken = authHeader.Substring("Bearer ".Length);
+                    var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+
+                    if (resultStatus == DisconnectReason.Unknown)
+                    {
+                        if (puid != request.ProductUserId)
+                        {
+                            _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
+                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                        }
+
+                        var platformEat = ExtractEatFromJwt(bearerToken);
+
+                        if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
+                        {
+                            _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
+                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
+                        }
+                    }
+
+                    _logger.Information(resultStatus.ToString() + " " + puid + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
+                }
+                else
+                {
+                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error while processing the Authorization header");
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
             }
         }
         else
@@ -209,6 +234,43 @@ public sealed class TokenController : ControllerBase
         }
     }
 
+    public string ExtractEatFromJwt(string jwt)
+    {
+        try
+        {
+            // JWT is in the format Header.Payload.Signature
+            // Split the JWT to get the Payload
+            var parts = jwt.Split('.');
+            if (parts.Length != 3)
+            {
+                throw new ArgumentException("Invalid JWT");
+            }
+
+            // The Payload is Base64Url encoded, decode it
+            var payload = parts[1];
+            var payloadBytes = Convert.FromBase64String(payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '='));
+            var payloadJson = Encoding.UTF8.GetString(payloadBytes);
+
+            // Parse the JSON
+            var jsonDocument = JsonDocument.Parse(payloadJson);
+            var root = jsonDocument.RootElement;
+
+            // Extract the `eat` value
+            if (root.TryGetProperty("act", out var actProperty))
+            {
+                if (actProperty.TryGetProperty("eat", out var eatProperty))
+                {
+                    return eatProperty.GetString();
+                }
+            }
+
+            throw new Exception("Could not extract `eat` from JWT");
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
 
     public static string HashedPuid(string puid2)
     {
