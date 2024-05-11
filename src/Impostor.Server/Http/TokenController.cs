@@ -157,8 +157,6 @@ public sealed class TokenController : ControllerBase
             value.Add(randomHash);
         }
 
-        _logger.Information(randomHash + " " + request.ProductUserId + "qwq");
-
         var token = new Token
         {
             Content = new TokenPayload
