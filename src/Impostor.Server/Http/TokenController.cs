@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -23,6 +24,7 @@ namespace Impostor.Server.Http;
 public sealed class TokenController : ControllerBase
 {
     private readonly ILogger _logger = Log.Logger;
+    public static readonly Dictionary<string, int> MmRequestFailure = new();
 
     /// <summary>
     /// Get an authentication token.
@@ -63,57 +65,99 @@ public sealed class TokenController : ControllerBase
             }
         }
 
-        var notLocalFc = "";
+        var notLocalFc = string.Empty;
 
-        if (Request.Headers.ContainsKey("Authorization"))
+        if (!ClientManager._puids.ContainsKey(ipAddress.ToString())
+            || (ClientManager._puids.TryGetValue(ipAddress.ToString(), out var tokens) && tokens.ProductUserId != request.ProductUserId))
         {
-            try
+            if (Request.Headers.ContainsKey("Authorization"))
             {
-                // Get the Authorization header
-                var authHeader = Request.Headers["Authorization"].ToString();
-
-                // Check if the Authorization header starts with "Bearer "
-                if (authHeader.StartsWith("Bearer "))
+                if (MmRequestFailure.TryGetValue(ipAddress.ToString(), out var failtimes))
                 {
-                    // Extract the Bearer token from the Authorization header
-                    var bearerToken = authHeader.Substring("Bearer ".Length);
-                    var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
-                    notLocalFc = friendcode;
-
-                    if (resultStatus == DisconnectReason.Unknown)
+                    if (failtimes > 6)
                     {
-                        if (puid != request.ProductUserId)
-                        {
-                            _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
-                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
-                        }
-
-                        var platformEat = ExtractEatFromJwt(bearerToken);
-
-                        if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
-                        {
-                            _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
-                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
-                        }
+                        _logger.Warning("Too many failed mm requests from {0}", ipAddress);
+                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.TooManyRequests)));
                     }
+                }
 
-                    _logger.Information(resultStatus.ToString() + " " + puid + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
-                }
-                else
+                try
                 {
-                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                    // Get the Authorization header
+                    var authHeader = Request.Headers["Authorization"].ToString();
+
+                    // Check if the Authorization header starts with "Bearer "
+                    if (authHeader.StartsWith("Bearer "))
+                    {
+                        // Extract the Bearer token from the Authorization header
+                        var bearerToken = authHeader.Substring("Bearer ".Length);
+                        var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+                        notLocalFc = friendcode;
+
+                        if (resultStatus == DisconnectReason.Unknown)
+                        {
+                            if (puid != request.ProductUserId)
+                            {
+                                _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
+                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                            }
+
+                            var platformEat = ExtractEatFromJwt(bearerToken);
+
+                            if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
+                            {
+                                _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
+                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
+                            }
+                        }
+                        else
+                        {
+                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
+                        }
+
+                        _logger.Information(ipAddress + " " + HashedPuid(puid) + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
+                    }
+                    else
+                    {
+                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Error while processing the Authorization header");
+                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.Error(ex, "Error while processing the Authorization header");
-                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
             }
+        }
+
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        var random = new Random();
+        var result = new string(
+            Enumerable.Repeat(chars, 8)
+                      .Select(s => s[random.Next(s.Length)])
+                      .ToArray());
+
+        var randomHash = HashedPuid(request.ProductUserId) + result;
+
+        if (!MmTokens.TryGetValue(request.ProductUserId, out var value))
+        {
+            MmTokens[request.ProductUserId] = new List<string> { randomHash };
         }
         else
         {
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+            if (value.Contains(randomHash))
+            {
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+            }
+
+            value.Add(randomHash);
         }
+
+        _logger.Information(randomHash + " " + request.ProductUserId + "qwq");
 
         var token = new Token
         {
@@ -122,7 +166,7 @@ public sealed class TokenController : ControllerBase
                 ProductUserId = request.ProductUserId,
                 ClientVersion = request.ClientVersion,
             },
-            Hash = "MalumMenu_was_not_here",
+            Hash = randomHash,
         };
 
         if (string.IsNullOrWhiteSpace(token.Content.ProductUserId))
@@ -151,6 +195,18 @@ public sealed class TokenController : ControllerBase
         // Wrap into a Base64 sandwich
         var serialized = JsonSerializer.SerializeToUtf8Bytes(token);
         return Ok(Convert.ToBase64String(serialized));
+    }
+
+    public static void AddMMFailure(string ip)
+    {
+        if (MmRequestFailure.ContainsKey(ip))
+        {
+            MmRequestFailure[ip]++;
+        }
+        else
+        {
+            MmRequestFailure.Add(ip, 1);
+        }
     }
 
     public async Task<(DisconnectReason disconnectReason, string puid, string friendcode)> SendRequestWithBearerAsync(string bearerToken, string productUserId)

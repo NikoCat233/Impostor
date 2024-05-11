@@ -77,8 +77,11 @@ namespace Impostor.Server.Net
             {
                 if (_httpServerConfig.UseEacCheck)
                 {
-                    _logger.LogInformation("Checking EAC data...");
+                    _logger.LogInformation("Checking EAC data and clear mm tokens...");
                     _eacFunctions.UpdateEACListFromURLAsync(_httpServerConfig.EacToken).GetAwaiter().GetResult();  // 更新EACList
+
+                    GamesController.MmTokens.Clear();
+                    TokenController.MmRequestFailure.Clear();
                 }
             }
             catch (Exception ex)
