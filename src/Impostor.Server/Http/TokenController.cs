@@ -67,70 +67,73 @@ public sealed class TokenController : ControllerBase
 
         var notLocalFc = string.Empty;
 
-        if (!ClientManager._puids.ContainsKey(ipAddress.ToString())
-            || (ClientManager._puids.TryGetValue(ipAddress.ToString(), out var tokens) && tokens.ProductUserId != request.ProductUserId))
+        if (MatchmakerService._httpServerConfig.UseInnerSlothAuth)
         {
-            if (Request.Headers.ContainsKey("Authorization"))
+            if (!ClientManager._puids.ContainsKey(ipAddress.ToString())
+                || (ClientManager._puids.TryGetValue(ipAddress.ToString(), out var tokens) && tokens.ProductUserId != request.ProductUserId))
             {
-                if (MmRequestFailure.TryGetValue(ipAddress.ToString(), out var failtimes))
+                if (Request.Headers.ContainsKey("Authorization"))
                 {
-                    if (failtimes > 6)
+                    if (MmRequestFailure.TryGetValue(ipAddress.ToString(), out var failtimes))
                     {
-                        _logger.Warning("Too many failed mm requests from {0}", ipAddress);
-                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.TooManyRequests)));
-                    }
-                }
-
-                try
-                {
-                    // Get the Authorization header
-                    var authHeader = Request.Headers["Authorization"].ToString();
-
-                    // Check if the Authorization header starts with "Bearer "
-                    if (authHeader.StartsWith("Bearer "))
-                    {
-                        // Extract the Bearer token from the Authorization header
-                        var bearerToken = authHeader.Substring("Bearer ".Length);
-                        var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
-                        notLocalFc = friendcode;
-
-                        if (resultStatus == DisconnectReason.Unknown)
+                        if (failtimes > 6)
                         {
-                            if (puid != request.ProductUserId)
+                            _logger.Warning("Too many failed mm requests from {0}", ipAddress);
+                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.TooManyRequests)));
+                        }
+                    }
+
+                    try
+                    {
+                        // Get the Authorization header
+                        var authHeader = Request.Headers["Authorization"].ToString();
+
+                        // Check if the Authorization header starts with "Bearer "
+                        if (authHeader.StartsWith("Bearer "))
+                        {
+                            // Extract the Bearer token from the Authorization header
+                            var bearerToken = authHeader.Substring("Bearer ".Length);
+                            var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+                            notLocalFc = friendcode;
+
+                            if (resultStatus == DisconnectReason.Unknown)
                             {
-                                _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
-                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                                if (puid != request.ProductUserId)
+                                {
+                                    _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
+                                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                                }
+
+                                var platformEat = ExtractEatFromJwt(bearerToken);
+
+                                if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
+                                {
+                                    _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
+                                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
+                                }
+                            }
+                            else
+                            {
+                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
                             }
 
-                            var platformEat = ExtractEatFromJwt(bearerToken);
-
-                            if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
-                            {
-                                _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
-                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
-                            }
+                            _logger.Information(ipAddress + " " + HashedPuid(puid) + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
                         }
                         else
                         {
-                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
+                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
                         }
-
-                        _logger.Information(ipAddress + " " + HashedPuid(puid) + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                        _logger.Error(ex, "Error while processing the Authorization header");
+                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.Error(ex, "Error while processing the Authorization header");
-                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
                 }
-            }
-            else
-            {
-                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
             }
         }
 
@@ -221,7 +224,7 @@ public sealed class TokenController : ControllerBase
                 request.Method = HttpMethod.Post;
 
                 // Set the URL
-                string url = "https://matchmaker-eu.among.us/api/user"; // Replace with your URL
+                string url = InnerSlothServer(MatchmakerService._httpServerConfig.InnerSlothServerRegion) + "/api/user";
                 request.RequestUri = new Uri(url);
 
                 // Set the headers
@@ -381,6 +384,7 @@ public sealed class TokenController : ControllerBase
         }
 
         public string ProductUserId { get; set; }
+
         public string FriendCode { get; set; }
     }
 
@@ -399,5 +403,21 @@ public sealed class TokenController : ControllerBase
 
         [JsonPropertyName("ExpiresAt")]
         public DateTime ExpiresAt { get; init; } = DefaultExpiryDate;
+    }
+
+    public string InnerSlothServer(string region)
+    {
+        switch (region)
+        {
+            case "na":
+                return "https://matchmaker.among.us";
+            case "eu":
+                return "https://matchmaker-eu.among.us";
+            case "asia":
+                return "https://matchmaker-as.among.us";
+
+            default:
+                return "https://matchmaker.among.us";
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
 using Impostor.Server.Http;
+using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -82,6 +83,7 @@ namespace Impostor.Server.Net
 
                     GamesController.MmTokens.Clear();
                     TokenController.MmRequestFailure.Clear();
+                    ClientManager._puids.Clear();
                 }
             }
             catch (Exception ex)
