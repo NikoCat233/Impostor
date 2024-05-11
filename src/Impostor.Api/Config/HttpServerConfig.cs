@@ -28,4 +28,8 @@ public class HttpServerConfig
     public bool UseEacCheck { get; set; } = false;
 
     public string EacToken { get; set; } = string.Empty;
+
+    public bool UseInnerSlothAuth { get; set; } = false;
+
+    public string InnerSlothServerRegion { get; set; } = "na";
 }
