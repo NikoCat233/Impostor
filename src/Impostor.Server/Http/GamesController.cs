@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Impostor.Api.Config;
@@ -11,6 +13,7 @@ using Impostor.Api.Games.Managers;
 using Impostor.Api.Innersloth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 namespace Impostor.Server.Http;
 
@@ -24,6 +27,10 @@ public sealed class GamesController : ControllerBase
     private readonly IGameManager _gameManager;
     private readonly ListingManager _listingManager;
     private readonly HostServer _hostServer;
+    private readonly ILogger _logger = Log.Logger;
+
+    public static Dictionary<string, List<string>> MmTokens = new Dictionary<string, List<string>>();
+
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GamesController"/> class.
@@ -50,21 +57,29 @@ public sealed class GamesController : ControllerBase
     [HttpGet]
     public IActionResult Index(int mapId, GameKeywords lang, int numImpostors, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        if (authorization.Scheme != "Bearer" || authorization.Parameter == null)
+        switch (CheckMmToken(authorization.ToString()))
         {
-            return BadRequest();
+            case DisconnectReason.Unknown:
+                var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
+                if (token == null)
+                {
+                    return BadRequest();
+                }
+
+                var clientVersion = new GameVersion(token.Content.ClientVersion);
+
+                var listings = _listingManager.FindListings(HttpContext, mapId, numImpostors, lang, clientVersion);
+                return Ok(listings.Select(GameListing.From));
+
+            case DisconnectReason.NotAuthorized:
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+
+            case DisconnectReason.ServerError:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+
+            default:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
         }
-
-        var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
-        if (token == null)
-        {
-            return BadRequest();
-        }
-
-        var clientVersion = new GameVersion(token.Content.ClientVersion);
-
-        var listings = _listingManager.FindListings(HttpContext, mapId, numImpostors, lang, clientVersion);
-        return Ok(listings.Select(GameListing.From));
     }
 
     /// <summary>
@@ -76,15 +91,28 @@ public sealed class GamesController : ControllerBase
     [HttpPost]
     public IActionResult Post(int gameId, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        var code = new GameCode(gameId);
-        var game = _gameManager.Find(code);
-
-        if (game == null)
+        switch (CheckMmToken(authorization.ToString()))
         {
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
-        }
+            case DisconnectReason.Unknown:
+                var code = new GameCode(gameId);
+                var game = _gameManager.Find(code);
 
-        return Ok(HostServer.From(game.PublicIp));
+                if (game == null)
+                {
+                    return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
+                }
+
+                return Ok(HostServer.From(game.PublicIp));
+
+            case DisconnectReason.NotAuthorized:
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+
+            case DisconnectReason.ServerError:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+
+            default:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+        }
     }
 
     /// <summary>
@@ -97,7 +125,20 @@ public sealed class GamesController : ControllerBase
     [HttpPut]
     public IActionResult Put([FromHeader] AuthenticationHeaderValue authorization)
     {
-        return Ok(_hostServer);
+        switch (CheckMmToken(authorization.ToString()))
+        {
+            case DisconnectReason.Unknown:
+                return Ok(_hostServer);
+
+            case DisconnectReason.NotAuthorized:
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+
+            case DisconnectReason.ServerError:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+
+            default:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+        }
     }
 
     private static uint ConvertAddressToNumber(IPAddress address)
@@ -105,6 +146,66 @@ public sealed class GamesController : ControllerBase
 #pragma warning disable CS0618 // Among Us only supports IPv4
         return (uint)address.Address;
 #pragma warning restore CS0618
+    }
+
+    public DisconnectReason CheckMmToken(string bearerToken)
+    {
+        try
+        {
+            // Check if the token starts with "Bearer "
+            if (!bearerToken.StartsWith("Bearer "))
+            {
+                throw new ArgumentException("Invalid bearer token");
+            }
+
+            // Remove the "Bearer " prefix
+            var jwt = bearerToken.Substring("Bearer ".Length);
+
+            // Decode the base64 encoded JSON
+            var bytes = Convert.FromBase64String(jwt);
+            var json = Encoding.UTF8.GetString(bytes);
+
+            // Parse the JSON
+            var jsonDocument = JsonDocument.Parse(json);
+            var root = jsonDocument.RootElement;
+
+            // Extract the `Content` object
+            if (root.TryGetProperty("Content", out var contentProperty))
+            {
+                // Extract the `Puid` and `Hash` values
+                if (contentProperty.TryGetProperty("Puid", out var puidProperty) && root.TryGetProperty("Hash", out var hashProperty))
+                {
+                    if (MmTokens.TryGetValue(puidProperty.ToString(), out var hashes))
+                    {
+                        if (hashes.Contains(hashProperty.ToString()))
+                        {
+                            return DisconnectReason.Unknown;
+                        }
+                        else
+                        {
+                            return DisconnectReason.NotAuthorized;
+                        }
+                    }
+                    else
+                    {
+                        return DisconnectReason.NotAuthorized;
+                    }
+                }
+                else
+                {
+                    throw new ArgumentException("Can not get puid and hash");
+                }
+            }
+            else
+            {
+                throw new ArgumentException("No Content found");
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.Warning($"Failed to extract and print Puid and Hash from JWT: {e.Message}");
+            return DisconnectReason.ServerError;
+        }
     }
 
     public class HostServer
