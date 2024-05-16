@@ -163,7 +163,7 @@ namespace Impostor.Server.Net
                             case GameJoinError.None:
                                 var clientIp = Connection.EndPoint.Address.ToString();
                                 var matchedPuidEntry = ClientManager._puids.FirstOrDefault(p => p.Value.Ips.Contains(clientIp));
-                                if (!matchedPuidEntry.Equals(default(KeyValuePair<string, UserPayload>)))
+                                if (matchedPuidEntry.Value != null)
                                 {
                                     matchedPuidEntry.Value.Clients.Add(Id);
                                     ClientManager._puids[matchedPuidEntry.Key] = matchedPuidEntry.Value;

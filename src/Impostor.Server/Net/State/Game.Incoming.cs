@@ -255,7 +255,7 @@ namespace Impostor.Server.Net.State
 
             // We can not handle the case where a user connect to server with 2 different account from a same ip.
             // If it happens, we should reject it while doing token response. Code here will always return the first puid-token generated
-            if (!matchedPuidEntry.Equals(default(KeyValuePair<string, UserPayload>)))
+            if (matchedPuidEntry.Value != null)
             {
                 var authData = matchedPuidEntry.Value;
                 client.Puid = matchedPuidEntry.Key;
