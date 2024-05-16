@@ -211,19 +211,6 @@ namespace Impostor.Server.Net.State
                     _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online IP limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
                     return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
                 }
-
-                if (client.Puid != null && client.Puid != string.Empty)
-                {
-                    if (ClientManager._puids.TryGetValue(client.Puid, out var existingToken))
-                    {
-                        var count2 = existingToken.Clients.Count();
-                        if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
-                        {
-                            _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
-                            return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same puid.\n({0}) x {1}", client.HashedPuid().ToString(), count));
-                        }
-                    }
-                }
             }
 
             // Check if;
@@ -288,6 +275,19 @@ namespace Impostor.Server.Net.State
                 {
                     _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is puid banned previously.");
                     return GameJoinResult.FromError(GameJoinError.Banned);
+                }
+
+                if (Client._antiCheatConfig.MaxOnlineFromSameIp != 0)
+                {
+                    if (ClientManager._puids.TryGetValue(client.Puid, out var existingToken))
+                    {
+                        var count2 = existingToken.Clients.Count();
+                        if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
+                        {
+                            _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
+                            return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same puid.\n({0}) x {1}", client.HashedPuid().ToString(), count));
+                        }
+                    }
                 }
             }
 
