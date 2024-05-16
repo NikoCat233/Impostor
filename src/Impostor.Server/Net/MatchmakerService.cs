@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,11 +80,22 @@ namespace Impostor.Server.Net
                 if (_httpServerConfig.UseEacCheck)
                 {
                     _logger.LogInformation("Checking EAC data and clear mm tokens...");
-                    _eacFunctions.UpdateEACListFromURLAsync(_httpServerConfig.EacToken).GetAwaiter().GetResult();  // 更新EACList
 
-                    GamesController.MmTokens.Clear();
                     TokenController.MmRequestFailure.Clear();
-                    ClientManager._puids.Clear();
+
+                    var puidsToRemove = ClientManager._puids.Where(p => p.Value.Clients.Count == 0).Select(p => p.Key).ToList();
+
+                    foreach (var puid in puidsToRemove)
+                    {
+                        ClientManager._puids.Remove(puid);
+                    }
+
+                    foreach (var puid in ClientManager._puids.Keys.ToList())
+                    {
+                        ClientManager._puids[puid].Hashes.Clear();
+                    }
+
+                    _eacFunctions.UpdateEACListFromURLAsync(_httpServerConfig.EacToken).GetAwaiter().GetResult();  // Update EACList
                 }
             }
             catch (Exception ex)

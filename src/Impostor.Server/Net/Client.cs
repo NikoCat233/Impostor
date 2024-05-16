@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Config;
@@ -14,6 +16,7 @@ using Impostor.Hazel;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Impostor.Server.Http.TokenController;
 
 namespace Impostor.Server.Net
 {
@@ -158,6 +161,14 @@ namespace Impostor.Server.Net
                         switch (result.Error)
                         {
                             case GameJoinError.None:
+                                var clientIp = Connection.EndPoint.Address.ToString();
+                                var matchedPuidEntry = ClientManager._puids.FirstOrDefault(p => p.Value.Ips.Contains(clientIp));
+                                if (!matchedPuidEntry.Equals(default(KeyValuePair<string, UserPayload>)))
+                                {
+                                    matchedPuidEntry.Value.Clients.Add(Id);
+                                    ClientManager._puids[matchedPuidEntry.Key] = matchedPuidEntry.Value;
+                                }
+
                                 break;
                             case GameJoinError.InvalidClient:
                                 await DisconnectAsync(DisconnectReason.Custom, "Client is in an invalid state.");
@@ -409,6 +420,16 @@ namespace Impostor.Server.Net
             }
 
             _logger.LogInformation("Client {0} disconnecting, reason: {1}", Id, reason);
+
+            if (ClientManager._puids.TryGetValue(Puid, out var existingToken))
+            {
+                if (existingToken.Clients.Contains(Id))
+                {
+                    existingToken.Clients.Remove(Id);
+                    ClientManager._puids[Puid] = existingToken;
+                }
+            }
+
             _clientManager.Remove(this);
         }
 
