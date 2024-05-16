@@ -212,7 +212,7 @@ namespace Impostor.Server.Net.State
                     return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
                 }
 
-                if (client.Puid != string.Empty)
+                if (client.Puid != null && client.Puid != string.Empty)
                 {
                     if (ClientManager._puids.TryGetValue(client.Puid, out var existingToken))
                     {

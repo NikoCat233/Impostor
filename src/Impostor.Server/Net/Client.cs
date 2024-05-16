@@ -421,7 +421,7 @@ namespace Impostor.Server.Net
 
             _logger.LogInformation("Client {0} disconnecting, reason: {1}", Id, reason);
 
-            if (ClientManager._puids.TryGetValue(Puid, out var existingToken))
+            if (Puid != null && Puid != string.Empty && ClientManager._puids.TryGetValue(Puid, out var existingToken))
             {
                 if (existingToken.Clients.Contains(Id))
                 {
