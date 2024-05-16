@@ -11,6 +11,7 @@ using Impostor.Api.Config;
 using Impostor.Api.Games;
 using Impostor.Api.Games.Managers;
 using Impostor.Api.Innersloth;
+using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -28,9 +29,6 @@ public sealed class GamesController : ControllerBase
     private readonly ListingManager _listingManager;
     private readonly HostServer _hostServer;
     private readonly ILogger _logger = Log.Logger;
-
-    public static Dictionary<string, List<string>> MmTokens = new Dictionary<string, List<string>>();
-
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GamesController"/> class.
@@ -175,9 +173,9 @@ public sealed class GamesController : ControllerBase
                 // Extract the `Puid` and `Hash` values
                 if (contentProperty.TryGetProperty("Puid", out var puidProperty) && root.TryGetProperty("Hash", out var hashProperty))
                 {
-                    if (MmTokens.TryGetValue(puidProperty.ToString(), out var hashes))
+                    if (ClientManager._puids.TryGetValue(puidProperty.ToString(), out var existingToken))
                     {
-                        if (hashes.Contains(hashProperty.ToString()))
+                        if (existingToken.Hashes.Contains(hashProperty.ToString()))
                         {
                             return DisconnectReason.Unknown;
                         }

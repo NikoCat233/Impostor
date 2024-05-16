@@ -66,74 +66,94 @@ public sealed class TokenController : ControllerBase
         }
 
         var notLocalFc = string.Empty;
+        bool shouldAuthorize = false;
 
         if (MatchmakerService._httpServerConfig.UseInnerSlothAuth)
         {
-            if (!ClientManager._puids.ContainsKey(ipAddress.ToString())
-                || (ClientManager._puids.TryGetValue(ipAddress.ToString(), out var tokens) && tokens.ProductUserId != request.ProductUserId))
+            shouldAuthorize = true;
+        }
+
+        if (ClientManager._puids.TryGetValue(request.ProductUserId, out var existingToken))
+        {
+            if (existingToken.Ips.Contains(ipAddress.ToString()))
             {
-                if (Request.Headers.ContainsKey("Authorization"))
+                shouldAuthorize = false;
+            }
+        }
+
+        if (shouldAuthorize)
+        {
+            if (Request.Headers.ContainsKey("Authorization"))
+            {
+                if (MmRequestFailure.TryGetValue(ipAddress.ToString(), out var failtimes))
                 {
-                    if (MmRequestFailure.TryGetValue(ipAddress.ToString(), out var failtimes))
+                    if (failtimes > 5)
                     {
-                        if (failtimes > 6)
-                        {
-                            _logger.Warning("Too many failed mm requests from {0}", ipAddress);
-                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.TooManyRequests)));
-                        }
+                        _logger.Warning("Too many failed mm requests from {0}", ipAddress);
+                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.TooManyRequests)));
                     }
+                }
 
-                    try
+                try
+                {
+                    // Get the Authorization header
+                    var authHeader = Request.Headers["Authorization"].ToString();
+
+                    // Check if the Authorization header starts with "Bearer "
+                    if (authHeader.StartsWith("Bearer "))
                     {
-                        // Get the Authorization header
-                        var authHeader = Request.Headers["Authorization"].ToString();
+                        // Extract the Bearer token from the Authorization header
+                        var bearerToken = authHeader.Substring("Bearer ".Length);
+                        var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+                        notLocalFc = friendcode;
 
-                        // Check if the Authorization header starts with "Bearer "
-                        if (authHeader.StartsWith("Bearer "))
+                        if (resultStatus == DisconnectReason.Unknown)
                         {
-                            // Extract the Bearer token from the Authorization header
-                            var bearerToken = authHeader.Substring("Bearer ".Length);
-                            var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
-                            notLocalFc = friendcode;
-
-                            if (resultStatus == DisconnectReason.Unknown)
+                            if (puid != request.ProductUserId)
                             {
-                                if (puid != request.ProductUserId)
-                                {
-                                    _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
-                                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
-                                }
-
-                                var platformEat = ExtractEatFromJwt(bearerToken);
-
-                                if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
-                                {
-                                    _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
-                                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
-                                }
-                            }
-                            else
-                            {
-                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
+                                _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
+                                AddMMFailure(ipAddress.ToString());
+                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
                             }
 
-                            _logger.Information(ipAddress + " " + HashedPuid(puid) + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
+                            var platformEat = ExtractEatFromJwt(bearerToken);
+
+                            if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
+                            {
+                                _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
+                                AddMMFailure(ipAddress.ToString());
+                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
+                            }
                         }
                         else
                         {
-                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                            if (resultStatus != DisconnectReason.ServerError)
+                            {
+                                AddMMFailure(ipAddress.ToString());
+                            }
+
+                            return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
                         }
+
+                        _logger.Information(ipAddress + " " + HashedPuid(puid) + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.Error(ex, "Error while processing the Authorization header");
-                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+                        AddMMFailure(ipAddress.ToString());
+                        return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
+                    _logger.Error(ex, "Error while processing the Authorization header");
+                    AddMMFailure(ipAddress.ToString());
+                    return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
                 }
+            }
+            else
+            {
+                AddMMFailure(ipAddress.ToString());
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
             }
         }
 
@@ -146,18 +166,56 @@ public sealed class TokenController : ControllerBase
 
         var randomHash = HashedPuid(request.ProductUserId) + result;
 
-        if (!MmTokens.TryGetValue(request.ProductUserId, out var value))
+        if (string.IsNullOrWhiteSpace(request.ProductUserId))
         {
-            MmTokens[request.ProductUserId] = new List<string> { randomHash };
+            _logger.Information("{0} apparently had no account", request.Username);
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
         }
-        else
-        {
-            if (value.Contains(randomHash))
-            {
-                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
-            }
 
-            value.Add(randomHash);
+        if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId)))
+        {
+            _logger.Warning("{0} ({1}) ({2}) is banned by EAC", request.Username);
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(SanctionReasons.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
+        }
+
+        // We can not handle the case where a user connect to server with 2 different account from a same ip.
+        // If it happens, we should reject it while doing token response. Code related is in Game.Incoming.cs
+        if (ClientManager._puids.Any(p => p.Key != request.ProductUserId && p.Value.Ips.Contains(ipAddress.ToString())))
+        {
+            _logger.Warning("{0} ({1}) ({2}) IpAddress already present in other puid tokens", request.Username, HashedPuid(request.ProductUserId), ipAddress);
+
+            if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
+            {
+                _logger.Warning("Decided to kick the new client. ForceAuthenticationOrKick");
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.DuplicateConnectionDetected)));
+            }
+            else
+            {
+                _logger.Warning("Still try to create a puid-token, but it probably conflicts with the previous one!");
+            }
+        }
+
+        if (!ClientManager._puids.TryGetValue(request.ProductUserId, out var existingToken2))
+        {
+            _logger.Information("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
+            ClientManager._puids.TryAdd(request.ProductUserId, new UserPayload(notLocalFc, new List<string> { ipAddress.ToString() }, new()));
+            existingToken2 = ClientManager._puids[request.ProductUserId];
+        }
+        else if (!existingToken2.Ips.Contains(ipAddress.ToString()))
+        {
+            _logger.Information("{0} ({1}) ({2}) IP has been added.", request.Username, HashedPuid(request.ProductUserId), ipAddress);
+            existingToken2.Ips.Add(ipAddress.ToString());
+            ClientManager._puids[request.ProductUserId] = existingToken2;
+        }
+
+        if (!existingToken2.Hashes.Contains(randomHash))
+        {
+            existingToken2.Hashes.Add(randomHash);
+            ClientManager._puids[request.ProductUserId] = existingToken2;
+        }
+        else // Impossible to reach this point
+        {
+            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
         }
 
         var token = new Token
@@ -170,35 +228,12 @@ public sealed class TokenController : ControllerBase
             Hash = randomHash,
         };
 
-        if (string.IsNullOrWhiteSpace(token.Content.ProductUserId))
-        {
-            _logger.Information("{0} apparently had no account", request.Username);
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
-        }
-
-        if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId)))
-        {
-            _logger.Warning("{0} ({1}) ({2}) is banned by EAC", request.Username);
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(SanctionReasons.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
-        }
-
-        if (!ClientManager._puids.ContainsKey(ipAddress.ToString()))
-        {
-            _logger.Information("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
-            ClientManager._puids.TryAdd(ipAddress.ToString(), new UserPayload(token.Content.ProductUserId, notLocalFc));
-        }
-        else if (ClientManager._puids[ipAddress.ToString()].ProductUserId != request.ProductUserId)
-        {
-            _logger.Information("{0} ({1}) ({2}) has been updated to ({3})", request.Username, HashedPuid(ClientManager._puids[ipAddress.ToString()].ProductUserId), ipAddress, HashedPuid(request.ProductUserId));
-            ClientManager._puids[ipAddress.ToString()].ProductUserId = request.ProductUserId;
-        }
-
         // Wrap into a Base64 sandwich
         var serialized = JsonSerializer.SerializeToUtf8Bytes(token);
         return Ok(Convert.ToBase64String(serialized));
     }
 
-    public static void AddMMFailure(string ip)
+    public void AddMMFailure(string ip)
     {
         if (MmRequestFailure.ContainsKey(ip))
         {
@@ -210,7 +245,7 @@ public sealed class TokenController : ControllerBase
         }
     }
 
-    public async Task<(DisconnectReason disconnectReason, string puid, string friendcode)> SendRequestWithBearerAsync(string bearerToken, string productUserId)
+    public async Task<(DisconnectReason DisconnectReason, string Puid, string Friendcode)> SendRequestWithBearerAsync(string bearerToken, string productUserId)
     {
         try
         {
@@ -377,15 +412,21 @@ public sealed class TokenController : ControllerBase
 
     public class UserPayload
     {
-        public UserPayload(string productUserId, string friendCode)
+        public UserPayload(string friendCode, List<string> ips, List<string> hashes)
         {
-            ProductUserId = productUserId;
             FriendCode = friendCode;
+            Ips = ips;
+            Hashes = hashes;
+            Clients = new();
         }
 
-        public string ProductUserId { get; set; }
-
         public string FriendCode { get; set; }
+
+        public List<string> Ips { get; set; }
+
+        public List<string> Hashes { get; set; }
+
+        public List<int> Clients { get; set; }
     }
 
     /// <summary>

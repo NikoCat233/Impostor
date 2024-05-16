@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using Impostor.Server.Events;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using static Impostor.Server.Http.TokenController;
 
 namespace Impostor.Server.Net.State
 {
@@ -207,7 +209,7 @@ namespace Impostor.Server.Net.State
                 if (count > Client._antiCheatConfig!.MaxOnlineFromSameIp)
                 {
                     _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
-                    return GameJoinResult.CreateCustomError(string.Format("[反作弊]\n检测到多重登录.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
+                    return GameJoinResult.CreateCustomError(string.Format("[反作弊]\nIP检测到多重登录.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
                 }
             }
 
@@ -235,11 +237,17 @@ namespace Impostor.Server.Net.State
                 client.Player = clientPlayer;
             }
 
-            if (ClientManager._puids.TryGetValue(client.Connection.EndPoint.Address.ToString(), out var authData))
+            var clientIp = client.Connection.EndPoint.Address.ToString();
+            var matchedPuidEntry = ClientManager._puids.FirstOrDefault(p => p.Value.Ips.Contains(clientIp));
+
+            // We can not handle the case where a user connect to server with 2 different account from a same ip.
+            // If it happens, we should reject it while doing token response. Code here will always return the first puid-token generated
+            if (ClientManager._puids.Any(p => p.Value.Ips.Contains(clientIp)))
             {
-                client.Puid = authData.ProductUserId;
+                var authData = matchedPuidEntry.Value;
+                client.Puid = matchedPuidEntry.Key;
                 client.FriendCode = authData.FriendCode;
-                _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3}", Code, client.Name, client.Id, client.HashedPuid());
+                _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4})", Code, client.Name, client.Id, client.HashedPuid(), client.FriendCode);
             }
             else
             {
@@ -267,6 +275,19 @@ namespace Impostor.Server.Net.State
                 {
                     _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is puid banned previously.");
                     return GameJoinResult.FromError(GameJoinError.Banned);
+                }
+
+                if (Client._antiCheatConfig.MaxOnlineFromSameIp != 0)
+                {
+                    if (ClientManager._puids.TryGetValue(client.Puid, out var existingToken))
+                    {
+                        var count2 = existingToken.Clients.Count();
+                        if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
+                        {
+                            _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count2);
+                            return GameJoinResult.CreateCustomError(string.Format("[反作弊]\npuid检测到多重登录.\n({0}) x {1}", client.HashedPuid().ToString(), count2));
+                        }
+                    }
                 }
             }
 
