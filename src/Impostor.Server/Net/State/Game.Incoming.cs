@@ -284,8 +284,8 @@ namespace Impostor.Server.Net.State
                         var count2 = existingToken.Clients.Count();
                         if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
                         {
-                            _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
-                            return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same puid.\n({0}) x {1}", client.HashedPuid().ToString(), count));
+                            _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count2);
+                            return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same puid.\n({0}) x {1}", client.HashedPuid().ToString(), count2));
                         }
                     }
                 }
