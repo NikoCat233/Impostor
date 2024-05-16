@@ -19,6 +19,7 @@ namespace Impostor.Server.Net
         public static HttpServerConfig _httpServerConfig;
         private readonly Matchmaker _matchmaker;
         private Timer _timer;
+        private Timer _cleantimer;
         public static EACFunctions _eacFunctions;
 
         public MatchmakerService(
@@ -63,6 +64,7 @@ namespace Impostor.Server.Net
             }
 
             _timer = new Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromMinutes(15));
+            _cleantimer = new Timer(CleanTimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(60));
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -79,8 +81,23 @@ namespace Impostor.Server.Net
             {
                 if (_httpServerConfig.UseEacCheck)
                 {
-                    _logger.LogInformation("Checking EAC data and clear mm tokens...");
+                    _logger.LogInformation("Checking EAC data");
+                    _eacFunctions.UpdateEACListFromURLAsync(_httpServerConfig.EacToken).GetAwaiter().GetResult();  // Update EACList
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error occurred in the timer callback: " + ex.Message);
+            }
+        }
 
+        private void CleanTimerCallback(object state)
+        {
+            try
+            {
+                if (_httpServerConfig.UseEacCheck)
+                {
+                    // _logger.LogInformation("clear mm tokens");
                     TokenController.MmRequestFailure.Clear();
 
                     var puidsToRemove = ClientManager._puids.Where(p => p.Value.Clients.Count == 0).Select(p => p.Key).ToList();
@@ -94,8 +111,6 @@ namespace Impostor.Server.Net
                     {
                         ClientManager._puids[puid].Hashes.Clear();
                     }
-
-                    _eacFunctions.UpdateEACListFromURLAsync(_httpServerConfig.EacToken).GetAwaiter().GetResult();  // Update EACList
                 }
             }
             catch (Exception ex)
