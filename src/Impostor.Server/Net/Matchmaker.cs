@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -20,7 +21,8 @@ namespace Impostor.Server.Net
         private readonly ClientManager _clientManager;
         private readonly ObjectPool<MessageReader> _readerPool;
         private readonly ILogger<HazelConnection> _connectionLogger;
-        private UdpConnectionListener? _connection;
+        private readonly List<UdpConnectionListener> _connections = new List<UdpConnectionListener>();
+        public static Dictionary<IPEndPoint, IPEndPoint> connections = new Dictionary<IPEndPoint, IPEndPoint>();
 
         public Matchmaker(
             IEventManager eventManager,
@@ -43,23 +45,40 @@ namespace Impostor.Server.Net
                 _ => throw new InvalidOperationException(),
             };
 
-            _connection = new UdpConnectionListener(ipEndPoint, _readerPool, mode)
+            var initialConnection = new UdpConnectionListener(ipEndPoint, _readerPool, mode);
+            initialConnection.NewConnection = (e) => OnNewConnectionAsync(e, initialConnection); // 移出初始化表达式
+
+            await initialConnection.StartAsync();
+            _connections.Add(initialConnection);
+        }
+
+        public async ValueTask StartNewAsync(IPEndPoint ipEndPoint)
+        {
+            var mode = ipEndPoint.AddressFamily switch
             {
-                NewConnection = OnNewConnection,
+                AddressFamily.InterNetwork => IPMode.IPv4,
+                AddressFamily.InterNetworkV6 => IPMode.IPv6,
+                _ => throw new InvalidOperationException(),
             };
 
-            await _connection.StartAsync();
+            var newConnection = new UdpConnectionListener(ipEndPoint, _readerPool, mode);
+            newConnection.NewConnection = (e) => OnNewConnectionAsync(e, newConnection); // 移出初始化表达式
+
+            _connections.Add(newConnection);
+            await newConnection.StartAsync();
         }
 
         public async ValueTask StopAsync()
         {
-            if (_connection != null)
+            foreach (var connection in _connections)
             {
-                await _connection.DisposeAsync();
+                await connection.DisposeAsync();
             }
+
+            _connections.Clear();
         }
 
-        private async ValueTask OnNewConnection(NewConnectionEventArgs e)
+        private async ValueTask OnNewConnectionAsync(NewConnectionEventArgs e, UdpConnectionListener currentListener) // 修改这一行
         {
             // Handshake.
             HandshakeC2S.Deserialize(e.HandshakeData, out var clientVersion, out var name, out var language, out var chatMode, out var platformSpecificData);
@@ -70,6 +89,8 @@ namespace Impostor.Server.Net
 
             // Register client
             await _clientManager.RegisterConnectionAsync(connection, name, clientVersion, language, chatMode, platformSpecificData);
+
+            connections.Add(e.Connection.EndPoint, currentListener.EndPoint);
         }
     }
 }

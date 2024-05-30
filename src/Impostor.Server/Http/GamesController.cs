@@ -54,7 +54,7 @@ public sealed class GamesController : ControllerBase
     [HttpGet]
     public IActionResult Index(int mapId, GameKeywords lang, int numImpostors, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        switch (CheckMmToken(authorization.ToString()))
+        switch (CheckMmToken(authorization.ToString(), out var mmHash))
         {
             case DisconnectReason.Unknown:
                 var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
@@ -64,9 +64,14 @@ public sealed class GamesController : ControllerBase
                 }
 
                 var clientVersion = new GameVersion(token.Content.ClientVersion);
-
+                var endpoint = TokenController.MmEndPoints[mmHash];
                 var listings = _listingManager.FindListings(HttpContext, mapId, numImpostors, lang, clientVersion);
-                return Ok(listings.Select(GameListing.From));
+                return Ok(listings.Select(game =>
+                {
+                    var listing = GameListing.From(game);
+                    listing.Port = (ushort)endpoint.Port; // 修改这一行
+                    return listing;
+                }));
 
             case DisconnectReason.NotAuthorized:
                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
@@ -88,7 +93,7 @@ public sealed class GamesController : ControllerBase
     [HttpPost]
     public IActionResult Post(int gameId, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        switch (CheckMmToken(authorization.ToString()))
+        switch (CheckMmToken(authorization.ToString(), out var mmHash))
         {
             case DisconnectReason.Unknown:
                 var code = new GameCode(gameId);
@@ -99,7 +104,7 @@ public sealed class GamesController : ControllerBase
                     return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
                 }
 
-                return Ok(HostServer.From(game.PublicIp));
+                return Ok(HostServer.From(TokenController.MmEndPoints[mmHash]));
 
             case DisconnectReason.NotAuthorized:
                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
@@ -122,10 +127,10 @@ public sealed class GamesController : ControllerBase
     [HttpPut]
     public IActionResult Put([FromHeader] AuthenticationHeaderValue authorization)
     {
-        switch (CheckMmToken(authorization.ToString()))
+        switch (CheckMmToken(authorization.ToString(), out var mmHash))
         {
             case DisconnectReason.Unknown:
-                return Ok(_hostServer);
+                return Ok(HostServer.From(TokenController.MmEndPoints[mmHash]));
 
             case DisconnectReason.NotAuthorized:
                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
@@ -145,7 +150,7 @@ public sealed class GamesController : ControllerBase
 #pragma warning restore CS0618
     }
 
-    public DisconnectReason CheckMmToken(string bearerToken)
+    public DisconnectReason CheckMmToken(string bearerToken, out string mmHash)
     {
         try
         {
@@ -176,15 +181,18 @@ public sealed class GamesController : ControllerBase
                     {
                         if (existingToken.Hashes.Contains(hashProperty.ToString()))
                         {
+                            mmHash = hashProperty.ToString();
                             return DisconnectReason.Unknown;
                         }
                         else
                         {
+                            mmHash = string.Empty;
                             return DisconnectReason.NotAuthorized;
                         }
                     }
                     else
                     {
+                        mmHash = string.Empty;
                         return DisconnectReason.NotAuthorized;
                     }
                 }
@@ -201,6 +209,7 @@ public sealed class GamesController : ControllerBase
         catch (Exception e)
         {
             _logger.Warning($"Failed to extract and print Puid and Hash from JWT: {e.Message}");
+            mmHash = string.Empty;
             return DisconnectReason.ServerError;
         }
     }
@@ -275,7 +284,7 @@ public sealed class GamesController : ControllerBase
         public required uint Ip { get; init; }
 
         [JsonPropertyName("Port")]
-        public required ushort Port { get; init; }
+        public required ushort Port { get; set; }
 
         [JsonPropertyName("GameId")]
         public required int GameId { get; init; }

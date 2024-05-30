@@ -17,7 +17,7 @@ namespace Impostor.Server.Net
         private readonly ILogger<MatchmakerService> _logger;
         private readonly ServerConfig _serverConfig;
         public static HttpServerConfig _httpServerConfig;
-        private readonly Matchmaker _matchmaker;
+        public readonly Matchmaker _matchmaker;
         private Timer _timer;
         private Timer _cleantimer;
         public static EACFunctions _eacFunctions;

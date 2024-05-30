@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Impostor.Api.Config;
 using Impostor.Api.Innersloth;
 using Impostor.Server.Net;
 using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Serilog;
 using static Impostor.Server.Http.GamesController;
 
@@ -25,6 +28,16 @@ public sealed class TokenController : ControllerBase
 {
     private readonly ILogger _logger = Log.Logger;
     public static readonly Dictionary<string, int> MmRequestFailure = new();
+    public static readonly Dictionary<string, IPEndPoint> MmEndPoints = new();
+
+    private readonly Matchmaker _matchmaker; // 添加这一行
+    private readonly ServerConfig _serverConfig;
+
+    public TokenController(Matchmaker matchmaker, IOptions<ServerConfig> serverConfig)
+    {
+        _matchmaker = matchmaker;
+        _serverConfig = serverConfig.Value;
+    }
 
     /// <summary>
     /// Get an authentication token.
@@ -208,6 +221,30 @@ public sealed class TokenController : ControllerBase
             ClientManager._puids[request.ProductUserId] = existingToken2;
         }
 
+        int randomPort;
+        bool isPortAvailable;
+        do
+        {
+            randomPort = new Random().Next(20000, 40000);
+            isPortAvailable = CheckIfPortIsAvailable(randomPort);
+        }
+        while (!isPortAvailable);
+
+        if (!MmEndPoints.ContainsKey(randomHash))
+        {
+            try
+            {
+                var endpoint = new IPEndPoint(IPAddress.Parse(_serverConfig.ResolveListenIp()), randomPort);
+                await _matchmaker.StartNewAsync(endpoint);
+                MmEndPoints.Add(randomHash, endpoint);
+                _logger.Information("Matchmaker is listening on {endpoint}", endpoint.ToString());
+            }
+            catch
+            {
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+            }
+        }
+
         if (!existingToken2.Hashes.Contains(randomHash))
         {
             existingToken2.Hashes.Add(randomHash);
@@ -329,6 +366,25 @@ public sealed class TokenController : ControllerBase
         }
     }
 
+    private bool CheckIfPortIsAvailable(int port)
+    {
+        TcpListener? tcpListener = null;
+        try
+        {
+            tcpListener = new TcpListener(IPAddress.Any, port);
+            tcpListener.Start();
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
+        finally
+        {
+            tcpListener?.Stop();
+        }
+    }
+
     public string ExtractEatFromJwt(string jwt)
     {
         try
@@ -427,6 +483,8 @@ public sealed class TokenController : ControllerBase
         public List<string> Hashes { get; set; }
 
         public List<int> Clients { get; set; }
+
+        public Dictionary<string, IPEndPoint> Ports { get; set; }
     }
 
     /// <summary>

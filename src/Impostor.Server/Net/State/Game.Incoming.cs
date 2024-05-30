@@ -178,6 +178,8 @@ namespace Impostor.Server.Net.State
                 return GameJoinResult.FromError(GameJoinError.Banned);
             }
 
+            _logger.LogInformation("{0} -> {1}", client.Connection.EndPoint, Matchmaker.connections[client.Connection.EndPoint]);
+
             var player = client.Player;
 
             // Check if the player is running the same version as the host
