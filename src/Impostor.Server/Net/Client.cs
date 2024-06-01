@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Config;
@@ -16,7 +14,6 @@ using Impostor.Hazel;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static Impostor.Server.Http.TokenController;
 
 namespace Impostor.Server.Net
 {

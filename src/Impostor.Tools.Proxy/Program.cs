@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Impostor.Hazel.Abstractions;
 using Impostor.Hazel;
+using Impostor.Hazel.Abstractions;
 using Impostor.Hazel.Extensions;
 using Impostor.Hazel.Udp;
 using Microsoft.Extensions.DependencyInjection;

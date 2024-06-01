@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -12,10 +12,10 @@ using Impostor.Api.Innersloth.GameOptions;
 using Impostor.Api.Net;
 using Impostor.Api.Net.Custom;
 using Impostor.Api.Net.Messages;
-using Impostor.Hazel.Abstractions;
 using Impostor.Api.Net.Messages.C2S;
 using Impostor.Api.Utils;
 using Impostor.Hazel;
+using Impostor.Hazel.Abstractions;
 using Impostor.Hazel.Extensions;
 using Impostor.Server;
 using Impostor.Server.Events;
