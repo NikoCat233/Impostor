@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +10,6 @@ using Impostor.Server.Events;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using static Impostor.Server.Http.TokenController;
 
 namespace Impostor.Server.Net.State
 {

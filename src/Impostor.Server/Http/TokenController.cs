@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -104,26 +106,29 @@ public sealed class TokenController : ControllerBase
                     {
                         // Extract the Bearer token from the Authorization header
                         var bearerToken = authHeader.Substring("Bearer ".Length);
-                        var (resultStatus, puid, friendcode) = await SendRequestWithBearerAsync(bearerToken, request.ProductUserId);
+                        var (resultStatus, friendcode) = await SendRequestWithBearerAsync(bearerToken);
                         notLocalFc = friendcode;
 
                         if (resultStatus == DisconnectReason.Unknown)
                         {
-                            if (puid != request.ProductUserId)
+                            var (tokenpuid, platformEat) = ExtractEatAndPuidFromJwt(bearerToken);
+                            _logger.Information(tokenpuid + " " + platformEat);
+
+                            if (tokenpuid != request.ProductUserId)
                             {
-                                _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, puid, request.ProductUserId);
+                                _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, tokenpuid, request.ProductUserId);
                                 AddMMFailure(ipAddress.ToString());
                                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
                             }
 
-                            var platformEat = ExtractEatFromJwt(bearerToken);
-
                             if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
                             {
-                                _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, puid, platformEat);
+                                _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
                                 AddMMFailure(ipAddress.ToString());
                                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
                             }
+
+                            _logger.Information(ipAddress + " " + HashedPuid(tokenpuid) + " " + friendcode + " " + platformEat);
                         }
                         else
                         {
@@ -132,10 +137,10 @@ public sealed class TokenController : ControllerBase
                                 AddMMFailure(ipAddress.ToString());
                             }
 
+                            _logger.Warning("Failed to get friendcode for {0} ({1}) ({2})", request.Username, request.ProductUserId, resultStatus);
+
                             return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
                         }
-
-                        _logger.Information(ipAddress + " " + HashedPuid(puid) + " " + friendcode + " " + ExtractEatFromJwt(bearerToken));
                     }
                     else
                     {
@@ -245,7 +250,7 @@ public sealed class TokenController : ControllerBase
         }
     }
 
-    public async Task<(DisconnectReason DisconnectReason, string Puid, string Friendcode)> SendRequestWithBearerAsync(string bearerToken, string productUserId)
+    public async Task<(DisconnectReason DisconnectReason, string Friendcode)> SendRequestWithBearerAsync(string bearerToken)
     {
         try
         {
@@ -255,81 +260,85 @@ public sealed class TokenController : ControllerBase
                 // Create a new HttpRequestMessage
                 var request = new HttpRequestMessage();
 
-                // Set the method to POST
-                request.Method = HttpMethod.Post;
+                // Set the method to GET
+                request.Method = HttpMethod.Get;
 
                 // Set the URL
-                string url = InnerSlothServer(MatchmakerService._httpServerConfig.InnerSlothServerRegion) + "/api/user";
+                var url = "https://backend.innersloth.com/api/user/username";
                 request.RequestUri = new Uri(url);
 
                 // Set the headers
-                request.Headers.Add("Accept", "text/plain");
+                request.Headers.Add("Accept", "application/vnd.api+json");
+                request.Headers.Add("Accept-Encoding", "deflate, gzip");
+                request.Headers.Add("User-Agent", "UnityPlayer/2020.3.45f1 (UnityWebRequest/1.0, libcurl/7.84.0-DEV)");
+                request.Headers.Add("X-Unity-Version", "2020.3.45f1");
                 request.Headers.Add("Authorization", "Bearer " + bearerToken);
-
-                // Set the body
-                var body = new
-                {
-                    Puid = productUserId, // Replace with your Puid
-                    Username = "Impostor", // Replace with your Username
-                    ClientVersion = "50603650", // Replace with your ClientVersion
-                    Language = 13, // Replace with your Language
-                };
-                var bodyJson = JsonSerializer.Serialize(body);
-                var httpContent = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-
-                // Add the content to the request
-                request.Content = httpContent;
 
                 // Send the request
                 var response = await client.SendAsync(request);
 
-                // Check if the response was successful
-                if (response.IsSuccessStatusCode)
+                // Check the response status code
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    // Get the response content
-                    var content = await response.Content.ReadAsStringAsync();
+                    return (DisconnectReason.NotAuthorized, string.Empty);
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return (DisconnectReason.Unknown, string.Empty);
+                }
+                else if (response.IsSuccessStatusCode)
+                {
+                    var contentStream = await response.Content.ReadAsStreamAsync();
+                    Stream decompressedStream;
 
-                    // Decode the base64 content
-                    var decodedContent = Encoding.UTF8.GetString(Convert.FromBase64String(content));
-
-                    // Parse the JSON content
-                    var jsonDocument = JsonDocument.Parse(decodedContent);
-                    var root = jsonDocument.RootElement;
-
-                    if (root.TryGetProperty("Content", out var contentProperty))
+                    if (response.Content.Headers.ContentEncoding.Contains("gzip"))
                     {
-                        if (contentProperty.TryGetProperty("Puid", out var puidProperty))
-                        {
-                            var puidAndFriendcode = puidProperty.GetString().Split(' ');
-                            if (puidAndFriendcode.Length == 2)
-                            {
-                                return (DisconnectReason.Unknown, puidAndFriendcode[0], puidAndFriendcode[1]);
-                            }
-                        }
+                        decompressedStream = new GZipStream(contentStream, CompressionMode.Decompress);
+                    }
+                    else if (response.Content.Headers.ContentEncoding.Contains("deflate"))
+                    {
+                        decompressedStream = new DeflateStream(contentStream, CompressionMode.Decompress);
+                    }
+                    else
+                    {
+                        decompressedStream = contentStream;
                     }
 
-                    throw new Exception("Could not extract Puid from response content.");
-                }
-                else if (response.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    // Handle the Unauthorized error
-                    return (DisconnectReason.NotAuthorized, string.Empty, string.Empty);
+                    using (var reader = new StreamReader(decompressedStream))
+                    {
+                        var content = await reader.ReadToEndAsync();
+                        var jsonDocument = JsonDocument.Parse(content);
+                        var root = jsonDocument.RootElement;
+
+                        if (root.TryGetProperty("data", out var dataProperty) &&
+                            dataProperty.TryGetProperty("attributes", out var attributesProperty))
+                        {
+                            var username = attributesProperty.GetProperty("username").GetString();
+                            var discriminator = attributesProperty.GetProperty("discriminator").GetString();
+                            var friendcode = $"{username}#{discriminator}";
+
+                            return (DisconnectReason.Unknown, friendcode);
+                        }
+
+                        throw new Exception("Could not extract friendcode from response content.");
+                    }
                 }
                 else
                 {
-                    // Handle other errors
-                    return (DisconnectReason.ServerError, string.Empty, string.Empty);
+                    return (DisconnectReason.ServerError, string.Empty);
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.Error(ex.ToString());
+
             // Catch any other exceptions
-            return (DisconnectReason.ServerError, string.Empty, string.Empty);
+            return (DisconnectReason.ServerError, string.Empty);
         }
     }
 
-    public string ExtractEatFromJwt(string jwt)
+    public (string Puid, string Eat) ExtractEatAndPuidFromJwt(string jwt)
     {
         try
         {
@@ -343,27 +352,37 @@ public sealed class TokenController : ControllerBase
 
             // The Payload is Base64Url encoded, decode it
             var payload = parts[1];
-            var payloadBytes = Convert.FromBase64String(payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '='));
+            var payloadBytes = Convert.FromBase64String(payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '='));
             var payloadJson = Encoding.UTF8.GetString(payloadBytes);
 
             // Parse the JSON
             var jsonDocument = JsonDocument.Parse(payloadJson);
             var root = jsonDocument.RootElement;
 
-            // Extract the `eat` value
-            if (root.TryGetProperty("act", out var actProperty))
+            // Extract the `eat` value and `sub` value
+            string eat = string.Empty;
+            string puid = string.Empty;
+
+            if (root.TryGetProperty("act", out var actProperty) && actProperty.TryGetProperty("eat", out var eatProperty))
             {
-                if (actProperty.TryGetProperty("eat", out var eatProperty))
-                {
-                    return eatProperty.GetString();
-                }
+                eat = eatProperty.GetString();
             }
 
-            throw new Exception("Could not extract `eat` from JWT");
+            if (root.TryGetProperty("sub", out var subProperty))
+            {
+                puid = subProperty.GetString();
+            }
+
+            if (string.IsNullOrEmpty(eat) || string.IsNullOrEmpty(puid))
+            {
+                throw new Exception("Could not extract `eat` or `sub` from JWT");
+            }
+
+            return (puid, eat);
         }
         catch
         {
-            return string.Empty;
+            return (string.Empty, string.Empty);
         }
     }
 
