@@ -277,11 +277,14 @@ namespace Impostor.Server.Net.State
 
                 if (Client._antiCheatConfig.MaxOnlineFromSameIp != 0)
                 {
-                    var count2 = _clientManager.Clients.Count(x => x.Puid == client.Puid && x.Connection.IsConnected);
-                    if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
+                    if (ClientManager._puids.TryGetValue(client.Puid, out var existingToken))
                     {
-                        _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count2);
-                        return GameJoinResult.CreateCustomError(string.Format("[反作弊]\npuid检测到多重登录.\n({0}) x {1}", client.HashedPuid().ToString(), count2));
+                        var count2 = existingToken.Clients.Count();
+                        if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
+                        {
+                            _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count2);
+                            return GameJoinResult.CreateCustomError(string.Format("[反作弊]\npuid检测到多重登录.\n({0}) x {1}", client.HashedPuid().ToString(), count2));
+                        }
                     }
                 }
             }
