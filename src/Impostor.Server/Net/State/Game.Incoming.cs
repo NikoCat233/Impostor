@@ -330,6 +330,7 @@ namespace Impostor.Server.Net.State
                 GameState = GameStates.NotStarted;
 
                 _errroVL.Clear();
+                sentOnlineGameClients.Clear();
 
                 // Spawn the host.
                 await HandleJoinGameNewAsync(sender, false);

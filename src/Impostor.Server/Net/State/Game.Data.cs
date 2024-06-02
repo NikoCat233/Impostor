@@ -51,6 +51,8 @@ namespace Impostor.Server.Net.State
         private readonly Dictionary<uint, InnerNetObject> _allObjectsFast = new Dictionary<uint, InnerNetObject>();
 
         private readonly Dictionary<int, int> _errroVL = new();
+        
+        private List<int> sentOnlineGameClients = new();
 
         public T? FindObjectByNetId<T>(uint netId)
             where T : IInnerNetObject
@@ -220,6 +222,27 @@ namespace Impostor.Server.Net.State
                                     return false;
                                 }
 
+                                if (sender.Client.Id == obj.OwnerId && !sender.IsHost)
+                                {
+                                    if (GameState != GameStates.Ended)
+                                    {
+                                        _logger.LogWarning(
+                                            "Player {0} ({1}) tried to send DespawnFlag for {2} owned by itself.",
+                                            sender.Client.Name,
+                                            sender.Client.Id,
+                                            netId);
+
+                                        if (obj is InnerPlayerControl)
+                                        {
+                                            _logger.LogWarning("Player {0} ({1}) tried to despawn itself PlayerControl. Issue a kick", sender.Client.Name, sender.Client.Id);
+                                            if (sender.Client.Connection.IsConnected)
+                                            {
+                                                await sender.RemoveAsync(DisconnectReason.Custom, "[Impostor STCM+]\nBro why you need to despawn yourself in game?");
+                                            }
+                                        }
+                                    }
+                                }
+
                                 RemoveNetObject(obj);
                                 await OnDestroyAsync(obj);
                                 _logger.LogDebug("Destroyed InnerNetObject {0} ({1}), OwnerId {2}", obj.GetType().Name, netId, obj.OwnerId);
@@ -274,6 +297,25 @@ namespace Impostor.Server.Net.State
                                 }
 
                                 return false;
+                            }
+
+                            if (scene.ToLower() == "onlinegame")
+                            {
+                                if (GameState == GameStates.Started)
+                                {
+                                    _logger.LogWarning("Player {0} ({1}) tried to change scene to onlinegame while game is running.", sender.Client.Name, sender.Client.Id);
+                                    return false;
+                                }
+
+                                if (!sentOnlineGameClients.Contains(sender.Client.Id))
+                                {
+                                    sentOnlineGameClients.Add(sender.Client.Id);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning(clientId + "Tried to change to online scene again");
+                                    return false;
+                                }
                             }
 
                             sender.Scene = scene;
