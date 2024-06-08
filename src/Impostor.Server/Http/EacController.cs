@@ -26,7 +26,7 @@ namespace Impostor.Server.Http
     public class EACFunctions
     {
         private readonly ILogger _logger = Log.Logger;
-        private string EndPointURL = "https://api.tohre.dev/eac/?token=";
+        private string EndPointURL = "https://tohre.niko233.me/eac?token=";
         public EACList _eacList;
 
         public async Task UpdateEACListFromURLAsync(string token)
