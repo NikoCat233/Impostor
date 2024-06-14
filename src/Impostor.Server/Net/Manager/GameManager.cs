@@ -94,11 +94,11 @@ namespace Impostor.Server.Net.Manager
                 return null;
             }
 
-            var (success, game) = await TryCreateAsync(options, filterOptions, @event.GameCode);
+            var (success, game) = await TryCreateAsync(options, filterOptions, owner, @event.GameCode);
 
             for (var i = 0; i < 10 && !success; i++)
             {
-                (success, game) = await TryCreateAsync(options, filterOptions);
+                (success, game) = await TryCreateAsync(options, filterOptions, owner);
             }
 
             if (!success || game == null)
@@ -114,7 +114,7 @@ namespace Impostor.Server.Net.Manager
             return CreateAsync(null, options, filterOptions);
         }
 
-        private async ValueTask<(bool Success, Game? Game)> TryCreateAsync(IGameOptions options, GameFilterOptions filterOptions, GameCode? desiredGameCode = null)
+        private async ValueTask<(bool Success, Game? Game)> TryCreateAsync(IGameOptions options, GameFilterOptions filterOptions, IClient? owner, GameCode? desiredGameCode = null)
         {
             var gameCode = desiredGameCode ?? _gameCodeFactory.Create();
             var game = ActivatorUtilities.CreateInstance<Game>(_serviceProvider, _publicIp, gameCode, options, filterOptions);
@@ -126,7 +126,7 @@ namespace Impostor.Server.Net.Manager
 
             _logger.LogInformation("Created game with code {0}, Authoritive {1}", game.Code, game.IsHostAuthoritive);
 
-            await _eventManager.CallAsync(new GameCreatedEvent(game));
+            await _eventManager.CallAsync(new GameCreatedEvent(game, owner));
 
             return (true, game);
         }
