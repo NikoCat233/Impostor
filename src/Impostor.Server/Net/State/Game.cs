@@ -138,6 +138,7 @@ namespace Impostor.Server.Net.State
                 await _eventManager.CallAsync(new GameStartedEvent(this));
             }
         }
+
         private ValueTask BroadcastJoinMessage(IMessageWriter message, bool clear, ClientPlayer player)
         {
             Message01JoinGameS2C.SerializeJoin(message, clear, Code, player, HostId);
