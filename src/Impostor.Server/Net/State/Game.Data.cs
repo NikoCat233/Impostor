@@ -51,7 +51,7 @@ namespace Impostor.Server.Net.State
         private readonly Dictionary<uint, InnerNetObject> _allObjectsFast = new Dictionary<uint, InnerNetObject>();
 
         private readonly Dictionary<int, int> _errroVL = new();
-        
+
         private List<int> sentOnlineGameClients = new();
 
         public T? FindObjectByNetId<T>(uint netId)
@@ -338,10 +338,9 @@ namespace Impostor.Server.Net.State
 
                             if (GameState != GameStates.Starting)
                             {
-                                _logger.LogWarning("{0} - Player {1} ({2}) tried to send ReadyFlag but game is not starting.", Code, sender.Client.Name, sender.Client.Id);
-
                                 if (clientId != HostId)
                                 {
+                                    _logger.LogWarning("{0} - Player {1} ({2}) tried to send ReadyFlag but game is not starting.", Code, sender.Client.Name, sender.Client.Id);
                                     return false;
                                 }
                             }
