@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -96,6 +96,10 @@ namespace Impostor.Server.Recorder
                 WriteLength(context);
 
                 await WriteAsync(context.Stream!);
+            }
+            catch
+            {
+                _logger.LogError($"Log packet failed for client {client.Id} {client.Name}");
             }
             finally
             {
