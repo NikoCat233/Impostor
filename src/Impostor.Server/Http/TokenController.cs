@@ -11,9 +11,9 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
 using Impostor.Api.Innersloth;
-using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using static Impostor.Server.Http.GamesController;
 
 namespace Impostor.Server.Http;
@@ -28,16 +28,20 @@ public sealed class TokenController : ControllerBase
     private readonly ILogger<TokenController> _logger;
     private readonly AntiCheatConfig _antiCheatConfig;
     private readonly HttpServerConfig _httpServerConfig;
-    private readonly EacController.EACFunctions _eacFunctions;
+    public readonly EacController.EACFunctions _eacFunctions;
 
-    public List<UserPayload> AuthClientData = new();
+    public static HashSet<UserPayload> AuthClientData = new();
     private readonly Dictionary<string, int> MmRequestFailure = new();
 
-    public TokenController(ILogger<TokenController> logger, AntiCheatConfig antiCheatConfig, HttpServerConfig httpServerConfig, EacController.EACFunctions eacFunctions)
+    public TokenController(
+        ILogger<TokenController> logger,
+        IOptions<AntiCheatConfig> antiCheatOptions,
+        IOptions<HttpServerConfig> httpServerOptions,
+        EacController.EACFunctions eacFunctions)
     {
         _logger = logger;
-        _antiCheatConfig = antiCheatConfig;
-        _httpServerConfig = httpServerConfig;
+        _antiCheatConfig = antiCheatOptions.Value;
+        _httpServerConfig = httpServerOptions.Value;
         _eacFunctions = eacFunctions;
     }
 
@@ -90,7 +94,7 @@ public sealed class TokenController : ControllerBase
 
         if (GetUnUsedUserPayLoad(request.ProductUserId, ipAddress, out var matchingUser))
         {
-            if (matchingUser.ExpiresAt < DateTime.UtcNow.AddMinutes(-1))
+            if (matchingUser.CreatedAt < DateTime.UtcNow.AddMinutes(-1))
             {
                 matchingUser.Used = true;
                 AuthClientData.Remove(matchingUser);
@@ -459,6 +463,34 @@ public sealed class TokenController : ControllerBase
         }
     }
 
+    // Check if the ip is similar, if its similar we compare username and assign auth data.
+    public bool CustomCompareIps(string ip1, string ip2)
+    {
+        try
+        {
+            var ip1Parts = ip1.Trim().Split('.');
+            var ip2Parts = ip2.Trim().Split('.');
+
+            if (ip1Parts[0] != ip2Parts[0] || ip1Parts[1] != ip2Parts[1])
+            {
+                return false;
+            }
+
+            var part3Ip1 = int.Parse(ip1Parts[2]);
+            var part3Ip2 = int.Parse(ip2Parts[2]);
+            if (Math.Abs(part3Ip1 - part3Ip2) <= 1)
+            {
+                return true;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Body of the token request endpoint.
     /// </summary>
@@ -479,13 +511,13 @@ public sealed class TokenController : ControllerBase
 
     public class UserPayload
     {
-        public UserPayload(string puid, string friendCode, string hash, string name, DateTime expiresAt, string preIp)
+        public UserPayload(string puid, string friendCode, string hash, string name, DateTime createdAt, string preIp)
         {
             Puid = puid;
             FriendCode = friendCode;
             Hash = hash;
             Name = name;
-            ExpiresAt = expiresAt;
+            CreatedAt = createdAt;
             PreIp = preIp;
         }
 
@@ -497,7 +529,7 @@ public sealed class TokenController : ControllerBase
 
         public string Name { get; set; }
 
-        public DateTime ExpiresAt { get; init; }
+        public DateTime CreatedAt { get; init; }
 
         public string PreIp { get; set; }
 

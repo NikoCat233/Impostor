@@ -488,6 +488,8 @@ namespace Impostor.Server.Net.State
                 playerInfo.OwnerId = -4;
                 playerInfo.ClientId = sender.Client.Id;
                 playerInfo.PlayerId = GameNet.GameData.GetNextAvailablePlayerId();
+                playerInfo.FriendCode = sender.Client.FriendCode;
+                playerInfo.Puid = sender.Client.Puid;
 
                 if (!AddNetObject(playerInfo))
                 {

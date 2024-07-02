@@ -1,4 +1,4 @@
-﻿{
+{
   "Server": {
     "PublicIp": "127.0.0.1",
     "PublicPort": 22023,
@@ -8,10 +8,13 @@
   "HttpServer": {
     "Enabled": true,
     "ListenIp": "0.0.0.0",
-    "ListenPort": 22023
+    "ListenPort": 22023,
+    "UseInnerSlothAuth": true,
+    "UseEacCheck":  false
   },
   "AntiCheat": {
     "Enabled": true,
-    "BanIpFromGame": true
+    "BanIpFromGame": true,
+    "ForceAuthOrKick": true
   }
 }

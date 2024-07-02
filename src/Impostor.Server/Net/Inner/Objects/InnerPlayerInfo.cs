@@ -34,6 +34,10 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public int ClientId { get; internal set; }
 
+        public string FriendCode { get; internal set; } = string.Empty;
+
+        public string Puid { get; internal set; } = string.Empty;
+
         public string PlayerName => CurrentOutfit.PlayerName;
 
         public Dictionary<PlayerOutfitType, PlayerOutfit> Outfits { get; } = new()
@@ -134,8 +138,8 @@ namespace Impostor.Server.Net.Inner.Objects
                 Tasks[i].Serialize(writer);
             }
 
-            writer.Write(string.Empty);
-            writer.Write(string.Empty);
+            writer.Write(FriendCode);
+            writer.Write(Puid);
             return new ValueTask<bool>(true);
         }
 

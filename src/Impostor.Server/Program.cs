@@ -111,6 +111,8 @@ namespace Impostor.Server
 
                     services.AddSingleton<ICompatibilityManager, CompatibilityManager>();
                     services.AddSingleton<ClientManager>();
+                    services.AddSingleton<EacController.EACFunctions>();
+                    services.AddSingleton<TokenController>();
                     services.AddSingleton<IClientManager>(p => p.GetRequiredService<ClientManager>());
 
                     if (debug.GameRecorderEnabled)
