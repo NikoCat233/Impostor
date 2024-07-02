@@ -68,6 +68,26 @@ namespace Impostor.Server.Http
 
                 return false;
             }
+
+            public bool CheckFriendCodeExists(string friendcode)
+            {
+                if (_eacList == null)
+                {
+                    _logger.Warning("EACList is null.");
+                    return false;
+                }
+
+                foreach (var eacData in _eacList.EACDataList)
+                {
+                    if (eacData.FriendCode == friendcode)
+                    {
+                        _logger.Information("HashPUID {0} exists in EACList. Reason {1}", friendcode, eacData.Reason);
+                        return true;
+                    }
+                }
+
+                return false;
+            }
         }
     }
 }

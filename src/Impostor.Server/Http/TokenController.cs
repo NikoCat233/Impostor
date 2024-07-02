@@ -11,7 +11,6 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
 using Impostor.Api.Innersloth;
-using Impostor.Server.Net;
 using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -28,12 +27,18 @@ public sealed class TokenController : ControllerBase
 {
     private readonly ILogger<TokenController> _logger;
     private readonly AntiCheatConfig _antiCheatConfig;
-    public readonly Dictionary<string, int> MmRequestFailure = new();
+    private readonly HttpServerConfig _httpServerConfig;
+    private readonly EacController.EACFunctions _eacFunctions;
 
-    public TokenController(ILogger<TokenController> logger, AntiCheatConfig antiCheatConfig)
+    public List<UserPayload> AuthClientData = new();
+    private readonly Dictionary<string, int> MmRequestFailure = new();
+
+    public TokenController(ILogger<TokenController> logger, AntiCheatConfig antiCheatConfig, HttpServerConfig httpServerConfig, EacController.EACFunctions eacFunctions)
     {
         _logger = logger;
         _antiCheatConfig = antiCheatConfig;
+        _httpServerConfig = httpServerConfig;
+        _eacFunctions = eacFunctions;
     }
 
     /// <summary>
@@ -68,9 +73,9 @@ public sealed class TokenController : ControllerBase
         // InnerSloth Udp network can not handle ipv6. If you need puid auth, do not open your server on ipv6
         if (IPAddress.TryParse(ipAddress, out var parsedIpAddress) && parsedIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
         {
-            if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
+            if (_antiCheatConfig!.ForceAuthOrKick)
             {
-                _logger.Information("IPv6 address for {0} {1} is not allowed", request.Username, ipAddress);
+                _logger.LogInformation("IPv6 address for {0} {1} is not allowed", request.Username, ipAddress);
                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
             }
         }
@@ -78,14 +83,20 @@ public sealed class TokenController : ControllerBase
         var notLocalFc = string.Empty;
         bool shouldAuthorize = false;
 
-        if (MatchmakerService._httpServerConfig.UseInnerSlothAuth)
+        if (_httpServerConfig.UseInnerSlothAuth)
         {
             shouldAuthorize = true;
         }
 
-        if (ClientManager._puids.TryGetValue(request.ProductUserId, out var existingToken))
+        if (GetUnUsedUserPayLoad(request.ProductUserId, ipAddress, out var matchingUser))
         {
-            if (existingToken.Ips.Contains(ipAddress.ToString()))
+            if (matchingUser.ExpiresAt < DateTime.UtcNow.AddMinutes(-1))
+            {
+                matchingUser.Used = true;
+                AuthClientData.Remove(matchingUser);
+                shouldAuthorize = true;
+            }
+            else
             {
                 shouldAuthorize = false;
             }
@@ -99,7 +110,7 @@ public sealed class TokenController : ControllerBase
                 {
                     if (failtimes > 5)
                     {
-                        _logger.Warning("Too many failed mm requests from {0}", ipAddress);
+                        _logger.LogWarning("Too many failed mm requests from {0}", ipAddress);
                         return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.TooManyRequests)));
                     }
                 }
@@ -120,23 +131,23 @@ public sealed class TokenController : ControllerBase
                         if (resultStatus == DisconnectReason.Unknown)
                         {
                             var (tokenpuid, platformEat) = ReadPuidFromBearer(bearerToken);
-                            _logger.Information(tokenpuid + " " + platformEat);
+                            _logger.LogInformation(tokenpuid + " " + platformEat);
 
                             if (tokenpuid != request.ProductUserId)
                             {
-                                _logger.Warning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, tokenpuid, request.ProductUserId);
+                                _logger.LogWarning("Puid mismatch {0}({1}) IS:{2} Client:{3}", request.Username, ipAddress, tokenpuid, request.ProductUserId);
                                 AddMMFailure(ipAddress.ToString());
                                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ErrorAuthNonceFailure)));
                             }
 
                             if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
                             {
-                                _logger.Warning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
+                                _logger.LogWarning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
                                 AddMMFailure(ipAddress.ToString());
                                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
                             }
 
-                            _logger.Information(ipAddress + " " + HashedPuid(tokenpuid) + " " + friendcode + " " + platformEat);
+                            _logger.LogInformation(ipAddress + " " + HashedPuid(tokenpuid) + " " + friendcode + " " + platformEat);
                         }
                         else
                         {
@@ -145,7 +156,7 @@ public sealed class TokenController : ControllerBase
                                 AddMMFailure(ipAddress.ToString());
                             }
 
-                            _logger.Warning("Failed to get friendcode for {0} ({1}) ({2})", request.Username, request.ProductUserId, resultStatus);
+                            _logger.LogWarning("Failed to get friendcode for {0} ({1}) ({2})", request.Username, request.ProductUserId, resultStatus);
 
                             return Unauthorized(new MatchmakerResponse(new MatchmakerError(resultStatus)));
                         }
@@ -158,7 +169,7 @@ public sealed class TokenController : ControllerBase
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Error while processing the Authorization header");
+                    _logger.LogError(ex, "Error while processing the Authorization header");
                     AddMMFailure(ipAddress.ToString());
                     return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
                 }
@@ -181,54 +192,27 @@ public sealed class TokenController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(request.ProductUserId))
         {
-            _logger.Information("{0} apparently had no account", request.Username);
+            _logger.LogInformation("{0} apparently had no account", request.Username);
             return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
         }
 
-        if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId)))
+        if (_httpServerConfig.UseInnerSlothAuth && _httpServerConfig.UseEacCheck
+            && (_eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId))
+            || _eacFunctions.CheckFriendCodeExists(notLocalFc)))
         {
-            _logger.Warning("{0} ({1}) ({2}) is banned by EAC", request.Username);
+            _logger.LogWarning("{0} ({1}) ({2}) is banned by EAC", request.Username, HashedPuid(request.ProductUserId), ipAddress);
             return Unauthorized(new MatchmakerResponse(new MatchmakerError(SanctionReasons.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
         }
 
-        // We can not handle the case where a user connect to server with 2 different account from a same ip.
-        // If it happens, we should reject it while doing token response. Code related is in Game.Incoming.cs
-        if (ClientManager._puids.Any(p => p.Key != request.ProductUserId && p.Value.Ips.Contains(ipAddress.ToString())))
+        if (!GetUnUsedUserPayLoad(request.ProductUserId, ipAddress, out var matchingUser1))
         {
-            _logger.Warning("{0} ({1}) ({2}) IpAddress already present in other puid tokens", request.Username, HashedPuid(request.ProductUserId), ipAddress);
-
-            if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
-            {
-                _logger.Warning("Decided to kick the new client. ForceAuthenticationOrKick");
-                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.DuplicateConnectionDetected)));
-            }
-            else
-            {
-                _logger.Warning("Still try to create a puid-token, but it probably conflicts with the previous one!");
-            }
+            matchingUser1 = new UserPayload(request.ProductUserId, notLocalFc, randomHash, request.Username, DateTime.UtcNow, ipAddress);
+            AuthClientData.Add(matchingUser1);
+            _logger.LogInformation("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
         }
-
-        if (!ClientManager._puids.TryGetValue(request.ProductUserId, out var existingToken2))
+        else
         {
-            _logger.Information("{0} ({1}) ({2}) has been added to puids", request.Username, HashedPuid(request.ProductUserId), ipAddress);
-            ClientManager._puids.TryAdd(request.ProductUserId, new UserPayload(notLocalFc, new List<string> { ipAddress.ToString() }, new()));
-            existingToken2 = ClientManager._puids[request.ProductUserId];
-        }
-        else if (!existingToken2.Ips.Contains(ipAddress.ToString()))
-        {
-            _logger.Information("{0} ({1}) ({2}) IP has been added.", request.Username, HashedPuid(request.ProductUserId), ipAddress);
-            existingToken2.Ips.Add(ipAddress.ToString());
-            ClientManager._puids[request.ProductUserId] = existingToken2;
-        }
-
-        if (!existingToken2.Hashes.Contains(randomHash))
-        {
-            existingToken2.Hashes.Add(randomHash);
-            ClientManager._puids[request.ProductUserId] = existingToken2;
-        }
-        else // Impossible to reach this point
-        {
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+            matchingUser1.Hash = randomHash;
         }
 
         var token = new Token
@@ -256,6 +240,12 @@ public sealed class TokenController : ControllerBase
         {
             MmRequestFailure.Add(ip, 1);
         }
+    }
+
+    private bool GetUnUsedUserPayLoad(string puid, string preIp, out UserPayload matchingUser)
+    {
+        matchingUser = AuthClientData.FirstOrDefault(user => user.Puid == puid && user.PreIp == preIp && !user.Used);
+        return matchingUser != null;
     }
 
     public async Task<(DisconnectReason DisconnectReason, string Friendcode)> SendRequestWithBearerAsync(string bearerToken)
@@ -339,7 +329,7 @@ public sealed class TokenController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.Error(ex.ToString());
+            _logger.LogError(ex.ToString());
 
             // Catch any other exceptions
             return (DisconnectReason.ServerError, string.Empty);
@@ -407,6 +397,68 @@ public sealed class TokenController : ControllerBase
         return string.Concat(sha256Hash.AsSpan(0, 5), sha256Hash.AsSpan(sha256Hash.Length - 4));
     }
 
+    public DisconnectReason CheckMMToken(string bearerToken)
+    {
+        try
+        {
+            // Check if the token starts with "Bearer "
+            if (!bearerToken.StartsWith("Bearer "))
+            {
+                throw new ArgumentException("Invalid bearer token");
+            }
+
+            // Remove the "Bearer " prefix
+            var jwt = bearerToken.Substring("Bearer ".Length);
+
+            // Decode the base64 encoded JSON
+            var bytes = Convert.FromBase64String(jwt);
+            var json = Encoding.UTF8.GetString(bytes);
+
+            // Parse the JSON
+            var jsonDocument = JsonDocument.Parse(json);
+            var root = jsonDocument.RootElement;
+
+            // Extract the `Content` object
+            if (root.TryGetProperty("Content", out var contentProperty))
+            {
+                // Extract the `Puid` and `Hash` values
+                if (contentProperty.TryGetProperty("Puid", out var puidProperty) && root.TryGetProperty("Hash", out var hashProperty))
+                {
+                    var matchingUser = AuthClientData.FirstOrDefault(user => user.Hash == hashProperty.ToString());
+
+                    if (matchingUser == null)
+                    {
+                        return DisconnectReason.NotAuthorized;
+                    }
+                    else
+                    {
+                        if (matchingUser.Puid != puidProperty.ToString())
+                        {
+                            return DisconnectReason.NotAuthorized;
+                        }
+                        else
+                        {
+                            return DisconnectReason.Unknown;
+                        }
+                    }
+                }
+                else
+                {
+                    throw new ArgumentException("Can not get puid and hash");
+                }
+            }
+            else
+            {
+                throw new ArgumentException("No Content found");
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning($"Failed to extract and print Puid and Hash from JWT: {e.Message}");
+            return DisconnectReason.ServerError;
+        }
+    }
+
     /// <summary>
     /// Body of the token request endpoint.
     /// </summary>
@@ -427,13 +479,14 @@ public sealed class TokenController : ControllerBase
 
     public class UserPayload
     {
-        public UserPayload(string puid, string friendCode, string hash, string name, DateTime expiresAt)
+        public UserPayload(string puid, string friendCode, string hash, string name, DateTime expiresAt, string preIp)
         {
             Puid = puid;
             FriendCode = friendCode;
             Hash = hash;
             Name = name;
             ExpiresAt = expiresAt;
+            PreIp = preIp;
         }
 
         public string Puid { get; set; }
@@ -445,6 +498,12 @@ public sealed class TokenController : ControllerBase
         public string Name { get; set; }
 
         public DateTime ExpiresAt { get; init; }
+
+        public string PreIp { get; set; }
+
+        public string RealIp { get; set; } = string.Empty;
+
+        public bool Used { get; set; } = false;
     }
 
     /// <summary>

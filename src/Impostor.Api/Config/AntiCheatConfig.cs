@@ -8,6 +8,8 @@ namespace Impostor.Api.Config
 
         public bool BanIpFromGame { get; set; } = true;
 
+        public bool ForceAuthOrKick { get; set; } = false;
+
         public CheatingHostMode AllowCheatingHosts { get; set; } = CheatingHostMode.Never;
 
         public bool EnableGameFlowChecks { get; set; } = true;

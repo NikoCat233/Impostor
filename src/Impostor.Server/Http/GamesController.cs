@@ -24,6 +24,7 @@ public sealed class GamesController : ControllerBase
     private readonly IGameManager _gameManager;
     private readonly ListingManager _listingManager;
     private readonly HostServer _hostServer;
+    private readonly TokenController _tokenController;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GamesController"/> class.
@@ -31,12 +32,13 @@ public sealed class GamesController : ControllerBase
     /// <param name="gameManager">GameManager containing a list of games.</param>
     /// <param name="listingManager">ListingManager responsible for filtering.</param>
     /// <param name="serverConfig">Impostor configuration section containing the public ip address of this server.</param>
-    public GamesController(IGameManager gameManager, ListingManager listingManager, IOptions<ServerConfig> serverConfig)
+    public GamesController(IGameManager gameManager, ListingManager listingManager, IOptions<ServerConfig> serverConfig, TokenController tokenController)
     {
         _gameManager = gameManager;
         _listingManager = listingManager;
         var config = serverConfig.Value;
         _hostServer = HostServer.From(IPAddress.Parse(config.ResolvePublicIp()), config.PublicPort);
+        _tokenController = tokenController;
     }
 
     /// <summary>
@@ -50,21 +52,29 @@ public sealed class GamesController : ControllerBase
     [HttpGet]
     public IActionResult Index(int mapId, GameKeywords lang, int numImpostors, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        if (authorization.Scheme != "Bearer" || authorization.Parameter == null)
+        switch (_tokenController.CheckMMToken(authorization.ToString()))
         {
-            return BadRequest();
+            case DisconnectReason.Unknown:
+                var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
+                if (token == null)
+                {
+                    return BadRequest();
+                }
+
+                var clientVersion = new GameVersion(token.Content.ClientVersion);
+
+                var listings = _listingManager.FindListings(HttpContext, mapId, numImpostors, lang, clientVersion);
+                return Ok(listings.Select(GameListing.From));
+
+            case DisconnectReason.NotAuthorized:
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+
+            case DisconnectReason.ServerError:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+
+            default:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
         }
-
-        var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
-        if (token == null)
-        {
-            return BadRequest();
-        }
-
-        var clientVersion = new GameVersion(token.Content.ClientVersion);
-
-        var listings = _listingManager.FindListings(HttpContext, mapId, numImpostors, lang, clientVersion);
-        return Ok(listings.Select(GameListing.From));
     }
 
     /// <summary>
@@ -73,18 +83,30 @@ public sealed class GamesController : ControllerBase
     /// <param name="gameId">The id of the game that should be retrieved.</param>
     /// <returns>The server this game is hosted on.</returns>
     [HttpPost]
-    public IActionResult Post(int gameId)
+    public IActionResult Post(int gameId, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        var code = new GameCode(gameId);
-        var game = _gameManager.Find(code);
-
-        // If the game was not found, print an error message.
-        if (game == null)
+        switch (_tokenController.CheckMMToken(authorization.ToString()))
         {
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
-        }
+            case DisconnectReason.Unknown:
+                var code = new GameCode(gameId);
+                var game = _gameManager.Find(code);
 
-        return Ok(HostServer.From(game.PublicIp));
+                if (game == null)
+                {
+                    return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
+                }
+
+                return Ok(HostServer.From(game.PublicIp));
+
+            case DisconnectReason.NotAuthorized:
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+
+            case DisconnectReason.ServerError:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+
+            default:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+        }
     }
 
     /// <summary>
@@ -92,9 +114,22 @@ public sealed class GamesController : ControllerBase
     /// </summary>
     /// <returns>The address of this server.</returns>
     [HttpPut]
-    public IActionResult Put()
+    public IActionResult Put([FromHeader] AuthenticationHeaderValue authorization)
     {
-        return Ok(_hostServer);
+        switch (_tokenController.CheckMMToken(authorization.ToString()))
+        {
+            case DisconnectReason.Unknown:
+                return Ok(_hostServer);
+
+            case DisconnectReason.NotAuthorized:
+                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
+
+            case DisconnectReason.ServerError:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+
+            default:
+                return BadRequest(new MatchmakerResponse(new MatchmakerError(DisconnectReason.ServerError)));
+        }
     }
 
     private static uint ConvertAddressToNumber(IPAddress address)
