@@ -127,7 +127,7 @@ public sealed class GamesController : ControllerBase
         }
     }
 
-    private class MatchmakerResponse
+    public class MatchmakerResponse
     {
         [SetsRequiredMembers]
         public MatchmakerResponse(MatchmakerError error)
@@ -139,7 +139,7 @@ public sealed class GamesController : ControllerBase
         public required MatchmakerError[] Errors { get; init; }
     }
 
-    private class MatchmakerError
+    public class MatchmakerError
     {
         [SetsRequiredMembers]
         public MatchmakerError(DisconnectReason reason)

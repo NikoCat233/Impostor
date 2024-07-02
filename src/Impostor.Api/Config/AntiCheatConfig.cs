@@ -1,4 +1,4 @@
-﻿namespace Impostor.Api.Config
+namespace Impostor.Api.Config
 {
     public class AntiCheatConfig
     {
