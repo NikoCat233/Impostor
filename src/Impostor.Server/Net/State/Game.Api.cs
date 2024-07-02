@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Games;
@@ -23,6 +23,11 @@ namespace Impostor.Server.Net.State
         public void BanIp(IPAddress ipAddress)
         {
             _bannedIps.Add(ipAddress);
+        }
+
+        public void BanPuid(string puid)
+        {
+            _bannedPuids.Add(puid);
         }
 
         public async ValueTask SyncSettingsAsync()

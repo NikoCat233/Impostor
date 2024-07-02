@@ -583,6 +583,63 @@ namespace Impostor.Server.Net.Inner.Objects
                     return await HandleStartAppear(sender, shouldAnimate);
                 }
 
+                case unchecked((RpcCalls)101):
+                {
+                    try
+                    {
+                        var firstString = reader.ReadString();
+                        var secondString = reader.ReadString();
+                        reader.ReadInt32();
+
+                        var flag = string.IsNullOrEmpty(firstString) && string.IsNullOrEmpty(secondString);
+
+                        if (!flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.ForSure, "Client tried to send AUM Chat Rpc"))
+                        {
+                            _logger.LogWarning("AUM Message Info:\nSender: {0}\nContents: {1}", firstString, secondString);
+                            return false;
+                        }
+                    }
+
+                    // Do nothing
+                    catch
+                    {
+                    }
+
+                    break;
+                }
+
+                case unchecked((RpcCalls)42069):
+                {
+                    try
+                    {
+                        var id = reader.ReadByte();
+                        var flag = id == sender.Character!.PlayerId;
+
+                        if (flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.ForSure, "Client tried to send AUM Rpc"))
+                        {
+                            return false;
+                        }
+                    }
+
+                    // Do nothing
+                    catch
+                    {
+                    }
+
+                    break;
+                }
+
+                case unchecked((RpcCalls)420):
+                {
+                    var flag = reader.Length - reader.Position == 0;
+                    if (flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, CheatCategory.ForSure, "Client tried to send SickoMenu Rpc"))
+                    {
+                        return false;
+                    }
+
+                    break;
+                }
+
                 default:
                     return await base.HandleRpcAsync(sender, target, call, reader);
             }
@@ -955,7 +1012,7 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             if (!_game.IsHostAuthoritive)
             {
-                if (await sender.Client.ReportCheatAsync(RpcCalls.MurderPlayer, CheatCategory.GameFlow, "Client tried to murder directly"))
+                if (await sender.Client.ReportCheatAsync(RpcCalls.MurderPlayer, CheatCategory.ForSure, "Client tried to murder directly"))
                 {
                     return false;
                 }

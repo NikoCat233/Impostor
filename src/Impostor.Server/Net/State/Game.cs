@@ -30,6 +30,7 @@ namespace Impostor.Server.Net.State
         private readonly ConcurrentDictionary<int, ClientPlayer> _players;
         private readonly HashSet<IPAddress> _bannedIps;
         private readonly HashSet<string> _bannedPuids;
+        private readonly HashSet<int> _sentOnlineGameClients;
         private readonly IEventManager _eventManager;
         private readonly ICompatibilityManager _compatibilityManager;
         private readonly CompatibilityConfig _compatibilityConfig;
@@ -61,6 +62,7 @@ namespace Impostor.Server.Net.State
             _players = new ConcurrentDictionary<int, ClientPlayer>();
             _bannedIps = new HashSet<IPAddress>();
             _bannedPuids = new HashSet<string>();
+            _sentOnlineGameClients = new HashSet<int>();
 
             PublicIp = publicIp;
             Code = code;

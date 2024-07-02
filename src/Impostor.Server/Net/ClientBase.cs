@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
+using Impostor.Server.Http;
 using Impostor.Server.Net.State;
 
 namespace Impostor.Server.Net
@@ -62,6 +63,16 @@ namespace Impostor.Server.Net
         public async ValueTask DisconnectAsync(DisconnectReason reason, string? message = null)
         {
             await Connection.CustomDisconnectAsync(reason, message);
+        }
+
+        public string HashedPuid()
+        {
+            if (Puid == null || Puid == string.Empty)
+            {
+                return string.Empty;
+            }
+
+            return TokenController.HashedPuid(Puid);
         }
     }
 }

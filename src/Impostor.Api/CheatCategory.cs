@@ -28,4 +28,7 @@ public enum CheatCategory
 
     /// <summary>Legacy category for unsorted anticheat checks.</summary>
     Other,
+
+    /// <summary>100 % Cheats, must kick.</summary>
+    ForSure,
 }

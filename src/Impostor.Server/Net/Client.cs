@@ -37,7 +37,7 @@ namespace Impostor.Server.Net
 
         public override async ValueTask<bool> ReportCheatAsync(CheatContext context, CheatCategory category, string message)
         {
-            if (!_antiCheatConfig.Enabled)
+            if (!_antiCheatConfig.Enabled && category is not CheatCategory.ForSure)
             {
                 return false;
             }
@@ -81,6 +81,7 @@ namespace Impostor.Server.Net
                 CheatCategory.Role => _antiCheatConfig.EnableRoleChecks,
                 CheatCategory.Target => _antiCheatConfig.EnableTargetChecks,
                 CheatCategory.Other => true,
+                CheatCategory.ForSure => true,
                 _ => LogUnknownCategory(category),
             };
 
@@ -94,6 +95,7 @@ namespace Impostor.Server.Net
             if (_antiCheatConfig.BanIpFromGame)
             {
                 Player?.Game.BanIp(Connection.EndPoint.Address);
+                Player?.Game.BanPuid(Puid);
             }
 
             await DisconnectAsync(DisconnectReason.Hacking, context.Name + ": " + message);

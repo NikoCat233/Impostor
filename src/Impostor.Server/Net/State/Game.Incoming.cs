@@ -123,6 +123,7 @@ namespace Impostor.Server.Net.State
         private async ValueTask HandleJoinGameNew(ClientPlayer sender, bool isNew)
         {
             _logger.LogInformation("{0} - Player {1} ({2}) is joining.", Code, sender.Client.Name, sender.Client.Id);
+            _sentOnlineGameClients.Remove(sender.Client.Id);
 
             // Add player to the game.
             if (isNew)

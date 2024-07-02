@@ -247,6 +247,12 @@ namespace Impostor.Server.Net.State
                                 "Player {0} ({1}) tried to send SceneChangeFlag for another player.",
                                 sender.Client.Name,
                                 sender.Client.Id);
+
+                            if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SceneChangeFlag)), CheatCategory.ForSure, "Client tried to change scene for another player"))
+                            {
+                                return false;
+                            }
+
                             return false;
                         }
 
@@ -257,8 +263,37 @@ namespace Impostor.Server.Net.State
                                 "Player {0} ({1}) tried to send SceneChangeFlag with disallowed scene.",
                                 sender.Client.Name,
                                 sender.Client.Id);
+
+                            if (scene.ToLower() == "tutorial" && await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SceneChangeFlag)), CheatCategory.ForSure, "Client tried to change scene to Tutorial"))
+                            {
+                                return false;
+                            }
+
                             return false;
                         }
+                        else
+                        {
+                            if (GameState == GameStates.Started)
+                            {
+                                _logger.LogWarning("Player {0} ({1}) tried to change scene to onlinegame while game is running.", sender.Client.Name, sender.Client.Id);
+                                return false;
+                            }
+
+                            if (!_sentOnlineGameClients.Contains(sender.Client.Id))
+                            {
+                                _sentOnlineGameClients.Add(sender.Client.Id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning(
+                                    "Player {0} ({1}) tried to send Online game again.",
+                                    sender.Client.Name,
+                                    sender.Client.Id);
+                                return false;
+                            }
+                        }
+
+
 
                         sender.Scene = scene;
 
@@ -280,6 +315,15 @@ namespace Impostor.Server.Net.State
                                 sender.Client.Name,
                                 sender.Client.Id);
                             return false;
+                        }
+
+                        if (GameState != GameStates.Starting)
+                        {
+                            if (clientId != HostId)
+                            {
+                                _logger.LogWarning("{0} - Player {1} ({2}) tried to send ReadyFlag but game is not starting.", Code, sender.Client.Name, sender.Client.Id);
+                                return false;
+                            }
                         }
 
                         _logger.LogTrace("> IsReady {0}", clientId);
