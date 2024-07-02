@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
+using Impostor.Server.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,17 +16,25 @@ namespace Impostor.Server.Net
         private readonly ServerConfig _serverConfig;
         private readonly HttpServerConfig _httpServerConfig;
         private readonly Matchmaker _matchmaker;
+        private readonly TokenController _tokenController;
+        private readonly EacController.EACFunctions _eACFunctions;
+        private Timer _TimerTask;
 
         public MatchmakerService(
             ILogger<MatchmakerService> logger,
             IOptions<ServerConfig> serverConfig,
             IOptions<HttpServerConfig> httpServerConfig,
-            Matchmaker matchmaker)
+            Matchmaker matchmaker,
+            TokenController tokenController,
+            EacController.EACFunctions eACFunctions)
         {
             _logger = logger;
             _serverConfig = serverConfig.Value;
             _httpServerConfig = httpServerConfig.Value;
             _matchmaker = matchmaker;
+            _tokenController = tokenController;
+            _eACFunctions = eACFunctions;
+            _TimerTask = new Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(180));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -61,6 +70,40 @@ namespace Impostor.Server.Net
         {
             _logger.LogWarning("Matchmaker is shutting down!");
             await _matchmaker.StopAsync();
+        }
+
+        private void TimerCallback(object state)
+        {
+            try
+            {
+                if (_httpServerConfig.UseEacCheck)
+                {
+                    _eACFunctions.UpdateEACListFromURLAsync("NikoCat233_Is_Impostor").GetAwaiter().GetResult();  // Update EACList
+                }
+
+                if (_httpServerConfig.UseInnerSlothAuth)
+                {
+                    foreach (var tokens in TokenController.AuthClientData)
+                    {
+                        if (tokens.Used)
+                        {
+                            TokenController.AuthClientData.Remove(tokens);
+                            continue;
+                        }
+
+                        if (tokens.CreatedAt < DateTime.UtcNow.AddMinutes(-3))
+                        {
+                            tokens.Used = true;
+                            TokenController.AuthClientData.Remove(tokens);
+                            continue;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error occurred in the timer callback: " + ex.Message);
+            }
         }
     }
 }

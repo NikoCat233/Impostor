@@ -44,7 +44,8 @@ namespace Impostor.Server.Net
 
             if (Player != null && Player.IsHost)
             {
-                var isHostCheatingAllowed = _antiCheatConfig.AllowCheatingHosts switch {
+                var isHostCheatingAllowed = _antiCheatConfig.AllowCheatingHosts switch
+                {
                     CheatingHostMode.Always => true,
                     CheatingHostMode.IfRequested => GameVersion.HasDisableServerAuthorityFlag,
                     CheatingHostMode.Never => false,

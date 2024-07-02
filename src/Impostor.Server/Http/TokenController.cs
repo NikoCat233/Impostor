@@ -440,6 +440,12 @@ public sealed class TokenController : ControllerBase
                         {
                             return DisconnectReason.NotAuthorized;
                         }
+                        else if (matchingUser.CreatedAt < DateTime.UtcNow.AddSeconds(-90))
+                        {
+                            matchingUser.Used = true;
+                            AuthClientData.Remove(matchingUser);
+                            return DisconnectReason.NotAuthorized;
+                        }
                         else
                         {
                             return DisconnectReason.Unknown;

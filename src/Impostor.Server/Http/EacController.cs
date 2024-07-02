@@ -29,7 +29,7 @@ namespace Impostor.Server.Http
         {
             private readonly ILogger _logger = Log.Logger;
             private string EndPointURL = "https://tohre.niko233.me/eac?token=";
-            public EACList _eacList;
+            public static EACList _eacList;
 
             public async Task UpdateEACListFromURLAsync(string token)
             {
@@ -40,8 +40,6 @@ namespace Impostor.Server.Http
                     string json = await client.GetStringAsync(url);
                     List<EacData> eacDataList = JsonSerializer.Deserialize<List<EacData>>(json);
                     _eacList = new EACList { EACDataList = eacDataList };
-
-                    _logger.Information("EACList updated successfully.");
                 }
                 catch (Exception ex)
                 {

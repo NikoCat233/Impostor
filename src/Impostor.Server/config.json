@@ -10,10 +10,10 @@
     "ListenIp": "0.0.0.0",
     "ListenPort": 22023,
     "UseInnerSlothAuth": true,
-    "UseEacCheck":  false
+    "UseEacCheck":  true
   },
   "AntiCheat": {
-    "Enabled": true,
+    "Enabled": false,
     "BanIpFromGame": true,
     "ForceAuthOrKick": true
   }
