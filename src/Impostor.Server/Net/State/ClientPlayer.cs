@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
 using Impostor.Api.Net.Inner;
 using Impostor.Api.Unity;
@@ -67,6 +68,12 @@ namespace Impostor.Server.Net.State
         public ValueTask BanAsync()
         {
             return Game.HandleKickPlayer(Client.Id, true);
+        }
+
+        public async ValueTask RemoveAsync(DisconnectReason reason, string custom = "")
+        {
+            await Game.HandleRemovePlayer(Client.Id, reason);
+            await Client.DisconnectAsync(reason, custom);
         }
 
         private async void RunSpawnTimeout(object state)

@@ -36,7 +36,7 @@ namespace Impostor.Server.Net.State
                 return false;
             }
 
-            _logger.LogInformation("{0} - Player {1} ({2}) has left.", Code, player.Client.Name, playerId);
+            _logger.LogInformation("{0} - Player {1} ({2}) has left. hashpuid : {3}", Code, player.Client.Name, playerId, player.Client.HashedPuid());
 
             if (GameState == GameStates.Starting || GameState == GameStates.Started || GameState == GameStates.NotStarted)
             {
@@ -69,6 +69,7 @@ namespace Impostor.Server.Net.State
             if (isBan)
             {
                 BanIp(player.Client.Connection.EndPoint.Address);
+                BanPuid(player.Client.Puid);
             }
 
             await _eventManager.CallAsync(new GamePlayerLeftEvent(this, player, isBan));
@@ -125,7 +126,7 @@ namespace Impostor.Server.Net.State
             }
 
             HostId = host.Client.Id;
-            _logger.LogInformation("{0} - Assigned {1} ({2}) as new host.", Code, host.Client.Name, host.Client.Id);
+            _logger.LogInformation("{0} - Assigned {1} ({2}) as new host. Player Authority : {3}, Room Authority : {4}", Code, host.Client.Name, host.Client.Id, host.Client.GameVersion.HasDisableServerAuthorityFlag, IsHostAuthoritive);
 
             // Check our current game state.
             if (GameState == GameStates.Ended && host.Limbo == LimboStates.WaitingForHost)

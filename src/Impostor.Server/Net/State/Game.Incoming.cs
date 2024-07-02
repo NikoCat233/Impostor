@@ -122,8 +122,27 @@ namespace Impostor.Server.Net.State
 
         private async ValueTask HandleJoinGameNew(ClientPlayer sender, bool isNew)
         {
-            _logger.LogInformation("{0} - Player {1} ({2}) is joining.", Code, sender.Client.Name, sender.Client.Id);
+            _logger.LogInformation("{0} - Player {1} ({2}) ({3}) is joining from ({4}) with v{5}, Authority:{6}", Code, sender.Client.Name, sender.Client.HashedPuid(), sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
             _sentOnlineGameClients.Remove(sender.Client.Id);
+
+            // Should only happen on first player join(Host).
+            if (!_decidedAuthoritive)
+            {
+                if (sender.Client.GameVersion.HasDisableServerAuthorityFlag)
+                {
+                    IsHostAuthoritive = true;
+                    _logger.LogInformation("{0} - Enabled Authoritive by Player {1} ({2})", Code, sender.Client.Name, sender.Client.Id);
+                }
+                else
+                {
+                    IsHostAuthoritive = false;
+                    _logger.LogInformation("{0} - Run on Vanilla by Player {1} ({2})", Code, sender.Client.Name, sender.Client.Id);
+                }
+
+                _decidedAuthoritive = true;
+            }
+
+            _decidedAuthoritive = true;
 
             // Add player to the game.
             if (isNew)
@@ -268,7 +287,7 @@ namespace Impostor.Server.Net.State
 
         private async ValueTask HandleJoinGameNext(ClientPlayer sender, bool isNew)
         {
-            _logger.LogInformation("{0} - Player {1} ({2}) is rejoining.", Code, sender.Client.Name, sender.Client.Id);
+            _logger.LogInformation("{0} - Player {1} ({2}) is rejoining. Player Authority : {3}", Code, sender.Client.Name, sender.Client.Id, sender.Client.GameVersion.HasDisableServerAuthorityFlag);
 
             // Add player to the game.
             if (isNew)

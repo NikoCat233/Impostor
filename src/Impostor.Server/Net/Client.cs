@@ -90,7 +90,7 @@ namespace Impostor.Server.Net
                 return false;
             }
 
-            _logger.LogWarning("Client {Name} ({Id}) was caught cheating: [{Context}-{Category}] {Message}", Name, Id, context.Name, category, message);
+            _logger.LogWarning("Client {Name} ({Id}) ({Ip}) Authority: ({Authority}) was caught cheating: [{Context}-{Category}] {Message}, puid : {Puid}", Name, Id, Player!.Client.Connection.EndPoint.Address + ":" + Player.Client.Connection.EndPoint.Port, Player.Client.GameVersion.HasDisableServerAuthorityFlag, context.Name, category, message, Player!.Client!.Puid);
 
             if (_antiCheatConfig.BanIpFromGame)
             {
@@ -98,7 +98,7 @@ namespace Impostor.Server.Net
                 Player?.Game.BanPuid(Puid);
             }
 
-            await DisconnectAsync(DisconnectReason.Hacking, context.Name + ": " + message);
+            await Player!.RemoveAsync(DisconnectReason.Custom, string.Format("[NikoCat233]\nCheating for sure\n{0}\n{1} {2}", Connection.EndPoint.Address.ToString(), FriendCode, HashedPuid()));
 
             return true;
         }
