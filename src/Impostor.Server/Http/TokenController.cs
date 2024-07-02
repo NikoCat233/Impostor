@@ -256,8 +256,8 @@ public sealed class TokenController : ControllerBase
     {
         try
         {
-            // Create a new HttpClient
-            using (var client = new HttpClient())
+            // Create a new HttpClient with a timeout of 5 seconds
+            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
             {
                 // Create a new HttpRequestMessage
                 var request = new HttpRequestMessage();
@@ -330,6 +330,11 @@ public sealed class TokenController : ControllerBase
                     return (DisconnectReason.ServerError, string.Empty);
                 }
             }
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogError("Request timed out: " + ex.ToString());
+            return (DisconnectReason.ServerError, string.Empty);
         }
         catch (Exception ex)
         {
