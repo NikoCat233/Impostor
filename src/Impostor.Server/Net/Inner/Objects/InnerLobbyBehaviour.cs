@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Impostor.Api.Net;
 using Impostor.Api.Net.Custom;
@@ -16,7 +16,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public override ValueTask<bool> SerializeAsync(IMessageWriter writer, bool initialState)
         {
-            return new ValueTask<bool>(false);
+            throw new NotImplementedException();
         }
 
         public override ValueTask DeserializeAsync(IClientPlayer sender, IClientPlayer? target, IMessageReader reader, bool initialState)

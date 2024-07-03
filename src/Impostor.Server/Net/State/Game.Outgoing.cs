@@ -123,12 +123,7 @@ namespace Impostor.Server.Net.State
 
         private ValueTask SendObjectSpawn(InnerNetObject obj, int? targetClientId = null)
         {
-            // Modify this code so we send as GameData but only to target client
-            var writer = MessageWriter.Get(MessageType.Reliable);
-
-            writer.StartMessage(MessageFlags.GameData);
-            Code.Serialize(writer);
-
+            var writer = StartGameData(targetClientId);
             writer.StartMessage((byte)GameDataTag.SpawnFlag);
             writer.WritePacked(11u);        // TODO don't hardcode
             writer.WritePacked(obj.OwnerId);
