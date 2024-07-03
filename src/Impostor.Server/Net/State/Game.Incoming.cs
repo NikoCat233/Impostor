@@ -228,28 +228,31 @@ namespace Impostor.Server.Net.State
             var clientIp = client.Connection.EndPoint.Address.ToString();
             var matchingUser = TokenController.AuthClientData.Where(x => !x.Used && x.Name == client.Name && (x.PreIp == clientIp || _tokenController.CustomCompareIps(x.PreIp, x.RealIp))).FirstOrDefault();
 
-            if (matchingUser != null)
+            if (player.Client.Puid == string.Empty)
             {
-                if (matchingUser.CreatedAt < DateTime.UtcNow.AddMinutes(-1))
+                if (matchingUser != null)
                 {
-                    matchingUser.Used = true;
-                    TokenController.AuthClientData.Remove(matchingUser);
-                    return GameJoinResult.CreateCustomError("[NikoCat233]\nTimeout Auth.\nPlease Retry Login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
-                }
+                    if (matchingUser.CreatedAt < DateTime.UtcNow.AddMinutes(-1))
+                    {
+                        matchingUser.Used = true;
+                        TokenController.AuthClientData.Remove(matchingUser);
+                        return GameJoinResult.CreateCustomError("[NikoCat233]\nTimeout Auth.\nPlease Retry Login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
+                    }
 
-                matchingUser.Used = true;
-                matchingUser.RealIp = clientIp;
-                player.Client.Puid = matchingUser.Puid;
-                player.Client.FriendCode = matchingUser.FriendCode;
-                _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4}) from http ip ({5})", Code, client.Name, client.Id, TokenController.HashedPuid(player.Client.Puid), client.FriendCode, matchingUser.PreIp);
-            }
-            else if (_antiCheatConfig.ForceAuthOrKick)
-            {
-                return GameJoinResult.CreateCustomError("[NikoCat233]\nServer cannot auth you. Try disable your proxy!\nIf you are on Moblie Data, try turn on and off Flight Mode and retry login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
-            }
-            else
-            {
-                _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+                    matchingUser.Used = true;
+                    matchingUser.RealIp = clientIp;
+                    player.Client.Puid = matchingUser.Puid;
+                    player.Client.FriendCode = matchingUser.FriendCode;
+                    _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4}) from http ip ({5}), real ip ({6})", Code, client.Name, client.Id, TokenController.HashedPuid(player.Client.Puid), client.FriendCode, matchingUser.PreIp, client.Connection.EndPoint.Address);
+                }
+                else if (_antiCheatConfig.ForceAuthOrKick)
+                {
+                    return GameJoinResult.CreateCustomError("[NikoCat233]\nServer cannot auth you. Try disable your proxy!\nIf you are on Moblie Data, try turn on and off Flight Mode and retry login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
+                }
+                else
+                {
+                    _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+                }
             }
 
             if (client.Puid != string.Empty)
