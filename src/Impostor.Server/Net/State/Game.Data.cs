@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
+using Impostor.Api.Net;
 using Impostor.Api.Net.Inner;
+using Impostor.Api.Net.Messages;
 using Impostor.Api.Unity;
 using Impostor.Hazel;
+using Impostor.Hazel.Abstractions;
 using Impostor.Server.Events.Meeting;
 using Impostor.Server.Events.Player;
 using Impostor.Server.Net.Inner;
@@ -137,6 +140,45 @@ namespace Impostor.Server.Net.State
                             {
                                 return false;
                             }
+                        }
+
+                        if (toPlayer && target != null && IsHostAuthoritive && !_sentOverrideSpawnClients.Contains(target.Client.Id))
+                        {
+                            _logger.LogWarning("Host sending initital data to target client {0}, override", target.Client.Id);
+                            _sentOverrideSpawnClients.Add(target.Client.Id);
+
+                            // Use server side objects to spawn for target client, with 5 flag.
+                            foreach (var netObject in _allObjectsFast.Values)
+                            {
+                                if (netObject.OwnerId == target.Client.Id)
+                                {
+                                    continue;
+                                }
+
+                                if (netObject is InnerPlayerInfo playerInfo && playerInfo.ClientId == target.Client.Id)
+                                {
+                                    continue;
+                                }
+
+                                if (netObject is InnerPlayerInfo)
+                                {
+                                    // First we spawn these to client, then ask host to send initial data again!
+                                    await SendObjectSpawn(netObject, target.Client.Id);
+                                }
+                            }
+
+                            // Ask host to send initial data again!
+                            var writer = MessageWriter.Get(MessageType.Reliable);
+                            writer.StartMessage(MessageFlags.GameData);
+                            Code.Serialize(writer);
+                            writer.StartMessage((byte)GameDataTag.SceneChangeFlag);
+                            writer.WritePacked(target.Client.Id);
+                            writer.Write("OnlineGame");
+                            writer.EndMessage();
+                            writer.EndMessage();
+
+                            await SendToAsync(writer, HostId);
+                            return false;
                         }
 
                         var objectId = reader.ReadPackedUInt32();

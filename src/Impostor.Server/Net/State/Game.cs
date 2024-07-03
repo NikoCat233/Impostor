@@ -31,6 +31,7 @@ namespace Impostor.Server.Net.State
         private readonly HashSet<IPAddress> _bannedIps;
         private readonly HashSet<string> _bannedPuids;
         private readonly HashSet<int> _sentOnlineGameClients;
+        private readonly HashSet<int> _sentOverrideSpawnClients;
         private readonly IEventManager _eventManager;
         private readonly ICompatibilityManager _compatibilityManager;
         private readonly CompatibilityConfig _compatibilityConfig;
@@ -63,6 +64,7 @@ namespace Impostor.Server.Net.State
             _bannedIps = new HashSet<IPAddress>();
             _bannedPuids = new HashSet<string>();
             _sentOnlineGameClients = new HashSet<int>();
+            _sentOverrideSpawnClients = new HashSet<int>();
 
             PublicIp = publicIp;
             Code = code;

@@ -124,6 +124,7 @@ namespace Impostor.Server.Net.State
         {
             _logger.LogInformation("{0} - Player {1} ({2}) ({3}) is joining from ({4}) with v{5}, Authority:{6}", Code, sender.Client.Name, sender.Client.HashedPuid(), sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
             _sentOnlineGameClients.Remove(sender.Client.Id);
+            _sentOverrideSpawnClients.Remove(sender.Client.Id);
 
             // Should only happen on first player join(Host).
             if (!_decidedAuthoritive)
@@ -228,28 +229,31 @@ namespace Impostor.Server.Net.State
             var clientIp = client.Connection.EndPoint.Address.ToString();
             var matchingUser = TokenController.AuthClientData.Where(x => !x.Used && x.Name == client.Name && (x.PreIp == clientIp || _tokenController.CustomCompareIps(x.PreIp, x.RealIp))).FirstOrDefault();
 
-            if (matchingUser != null)
+            if (player.Client.Puid == string.Empty)
             {
-                if (matchingUser.CreatedAt < DateTime.UtcNow.AddMinutes(-1))
+                if (matchingUser != null)
                 {
-                    matchingUser.Used = true;
-                    TokenController.AuthClientData.Remove(matchingUser);
-                    return GameJoinResult.CreateCustomError("[NikoCat233]\nTimeout Auth.\nPlease Retry Login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
-                }
+                    if (matchingUser.CreatedAt < DateTime.UtcNow.AddMinutes(-1))
+                    {
+                        matchingUser.Used = true;
+                        TokenController.AuthClientData.Remove(matchingUser);
+                        return GameJoinResult.CreateCustomError("[NikoCat233]\nTimeout Auth.\nPlease Retry Login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
+                    }
 
-                matchingUser.Used = true;
-                matchingUser.RealIp = clientIp;
-                player.Client.Puid = matchingUser.Puid;
-                player.Client.FriendCode = matchingUser.FriendCode;
-                _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4}) from http ip ({5})", Code, client.Name, client.Id, TokenController.HashedPuid(player.Client.Puid), client.FriendCode, matchingUser.PreIp);
-            }
-            else if (_antiCheatConfig.ForceAuthOrKick)
-            {
-                return GameJoinResult.CreateCustomError("[NikoCat233]\nServer cannot auth you. Try disable your proxy!\nIf you are on Moblie Data, try turn on and off Flight Mode and retry login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
-            }
-            else
-            {
-                _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+                    matchingUser.Used = true;
+                    matchingUser.RealIp = clientIp;
+                    player.Client.Puid = matchingUser.Puid;
+                    player.Client.FriendCode = matchingUser.FriendCode;
+                    _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4}) from http ip ({5})", Code, client.Name, client.Id, TokenController.HashedPuid(player.Client.Puid), client.FriendCode, matchingUser.PreIp);
+                }
+                else if (_antiCheatConfig.ForceAuthOrKick)
+                {
+                    return GameJoinResult.CreateCustomError("[NikoCat233]\nServer cannot auth you. Try disable your proxy!\nIf you are on Moblie Data, try turn on and off Flight Mode and retry login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
+                }
+                else
+                {
+                    _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+                }
             }
 
             if (client.Puid != string.Empty)
