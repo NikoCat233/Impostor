@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Net.Inner;
 using Impostor.Api.Unity;
-using Impostor.Hazel;
 using Impostor.Server.Events.Meeting;
 using Impostor.Server.Events.Player;
 using Impostor.Server.Net.Inner;
@@ -49,6 +49,8 @@ namespace Impostor.Server.Net.State
             [12] = typeof(InnerVoteBanSystem),
             [13] = typeof(InnerFungleShipStatus),
         };
+
+        private static readonly Dictionary<Type, uint> SpawnableObjectIds = SpawnableObjects.ToDictionary((i) => i.Value, (i) => i.Key);
 
         private readonly List<InnerNetObject> _allObjects = new List<InnerNetObject>();
 
@@ -114,7 +116,15 @@ namespace Impostor.Server.Net.State
                         var netId = reader.ReadPackedUInt32();
                         if (_allObjectsFast.TryGetValue(netId, out var obj))
                         {
-                            if (!await obj.HandleRpcAsync(sender, target, (RpcCalls)reader.ReadByte(), reader))
+                            var call = (RpcCalls)reader.ReadByte();
+                            _logger.LogTrace(
+                                "Client {SenderId} called Rpc {Call} on NetId {CallerId} and sent it to {Target}",
+                                sender.Client.Id,
+                                call,
+                                obj.NetId,
+                                target?.Client.Id.ToString() ?? "everyone");
+
+                            if (!await obj.HandleRpcAsync(sender, target, call, reader))
                             {
                                 parent.RemoveMessage(reader);
                                 continue;
@@ -388,7 +398,7 @@ namespace Impostor.Server.Net.State
             {
                 if (netObject.IsDirty && netObject.OwnerId == ServerOwned)
                 {
-                    _logger.LogInformation("Sending over {Type} {NetId}", netObject.GetType().Name, netObject.NetId);
+                    _logger.LogTrace("Sending over {Type} {NetId}", netObject.GetType().Name, netObject.NetId);
                     await SendObjectData(netObject);
                     netObject.IsDirty = false;
                 }
@@ -565,7 +575,6 @@ namespace Impostor.Server.Net.State
 
                 _logger.LogTrace("Spawning PlayerInfo (netId {Netid})", playerInfo.NetId);
                 await OnSpawnAsync(sender, playerInfo);
-                var writer = MessageWriter.Get(MessageType.Reliable);
                 await SendObjectSpawn(playerInfo);
             }
         }

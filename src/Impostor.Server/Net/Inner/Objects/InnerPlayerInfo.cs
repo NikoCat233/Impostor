@@ -223,8 +223,6 @@ namespace Impostor.Server.Net.Inner.Objects
                 Tasks.Add(new TaskInfo(this, _eventManager, taskId++, taskType));
             }
 
-            _logger.LogInformation("Set {N} tasks", Tasks.Count);
-
             IsDirty = true;
         }
     }
