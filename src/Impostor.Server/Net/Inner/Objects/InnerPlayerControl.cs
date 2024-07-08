@@ -1144,6 +1144,12 @@ namespace Impostor.Server.Net.Inner.Objects
                 }
             }
 
+            // No need for this rpc to broadcast
+            if (!sender.IsHost)
+            {
+                return false;
+            }
+
             if (startCounter != -1)
             {
                 await _eventManager.CallAsync(new PlayerSetStartCounterEvent(Game, sender, this, (byte)startCounter));
