@@ -15,12 +15,16 @@ namespace Impostor.Server.Net.State
         private readonly ILogger<ClientPlayer> _logger;
         private readonly Timer _spawnTimeout;
         private readonly int _spawnTimeoutTime;
+        private readonly Timer _dataTimeout;
+        private readonly int _dataTimeoutTime;
 
         public ClientPlayer(ILogger<ClientPlayer> logger, ClientBase client, Game game, int timeOutTime)
         {
             _logger = logger;
             _spawnTimeout = new Timer(RunSpawnTimeout!, null, -1, -1);
             _spawnTimeoutTime = timeOutTime;
+            _dataTimeout = new Timer(RunDataTimeOut!, null, -1, -1);
+            _dataTimeoutTime = timeOutTime;
 
             Game = game;
             Client = client;
@@ -50,6 +54,17 @@ namespace Impostor.Server.Net.State
         public void DisableSpawnTimeout()
         {
             _spawnTimeout.Change(-1, -1);
+        }
+
+        public void InitializeDataTimeout()
+        {
+            _dataTimeout.Change(_dataTimeoutTime, -1);
+        }
+
+        // No need to disable data timeout i think.
+        public void DisableDataTimeout()
+        {
+            _dataTimeout.Change(-1, -1);
         }
 
         /// <inheritdoc />
@@ -84,7 +99,7 @@ namespace Impostor.Server.Net.State
                 {
                     _logger.LogInformation("{0} - Player {1} spawn timed out, kicking.", Game.Code, Client.Id);
 
-                    await KickAsync();
+                    await RemoveAsync(DisconnectReason.Custom, "Host didn't spawn your player in time.");
                 }
             }
             catch (Exception e)
@@ -94,6 +109,35 @@ namespace Impostor.Server.Net.State
             finally
             {
                 await _spawnTimeout.DisposeAsync();
+            }
+        }
+
+        private async void RunDataTimeOut(object state)
+        {
+            try
+            {
+                if (Character == null || Character.PlayerInfo == null)
+                {
+                    _logger.LogInformation("{0} - Player {1} data timed out, didnt spawn, kicking.", Game.Code, Client.Id);
+
+                    await RemoveAsync(DisconnectReason.Custom, "Host didn't spawn your data in time.");
+                    return;
+                }
+
+                if (Character.PlayerInfo.CurrentOutfit.IsIncomplete)
+                {
+                    _logger.LogInformation("{0} - Player {1} data timed out, didnt finish, kicking.", Game.Code, Client.Id);
+
+                    await RemoveAsync(DisconnectReason.Custom, "You didnt finish your data in time.");
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Exception caught while kicking player for data timeout.");
+            }
+            finally
+            {
+                await _dataTimeout.DisposeAsync();
             }
         }
     }

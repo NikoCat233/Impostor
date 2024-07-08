@@ -45,6 +45,11 @@ namespace Impostor.Server.Net.State
                     player.Character.PlayerInfo.Disconnected = true;
                     player.Character.PlayerInfo.LastDeathReason = DeathReason.Disconnect;
                 }
+
+                if (player.Character != null)
+                {
+                    await SendObjectDespawn(player.Character);
+                }
             }
 
             player.Client.Player = null;
