@@ -26,9 +26,9 @@ namespace Impostor.Server.Net
 
         public string Name { get; }
 
-        public string Puid { get; set; }
+        public string Puid { get; set; } = string.Empty;
 
-        public string FriendCode { get; set; }
+        public string FriendCode { get; set; } = string.Empty;
 
         public Language Language { get; }
 

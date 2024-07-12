@@ -7,7 +7,7 @@ using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
 using Impostor.Hazel;
 using Impostor.Server.Events;
-using Impostor.Server.Net.Manager;
+using Impostor.Server.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -199,18 +199,6 @@ namespace Impostor.Server.Net.State
                 return GameJoinResult.FromError(GameJoinError.GameDestroyed);
             }
 
-            // Rejoining clients need to bypass this limit with isNew
-            if (Client._antiCheatConfig!.MaxOnlineFromSameIp != 0)
-            {
-                var count = _clientManager.Clients.Count(x => x.Connection.EndPoint.Address.ToString() == client.Connection.EndPoint.Address.ToString() && x.Connection.IsConnected);
-
-                if (count > Client._antiCheatConfig!.MaxOnlineFromSameIp)
-                {
-                    _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online IP limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count);
-                    return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same ip.\n({0}) x {1}", client.Connection.EndPoint.Address.ToString(), count));
-                }
-            }
-
             // Check if;
             // - The player is already in this game.
             // - The game is full.
@@ -235,38 +223,49 @@ namespace Impostor.Server.Net.State
                 client.Player = clientPlayer;
             }
 
-            var clientIp = client.Connection.EndPoint.Address.ToString();
-            var matchedPuidEntry = ClientManager._puids.FirstOrDefault(p => p.Value.Ips.Contains(clientIp));
-
-            // We can not handle the case where a user connect to server with 2 different account from a same ip.
-            // If it happens, we should reject it while doing token response. Code here will always return the first puid-token generated
-            if (ClientManager._puids.Any(p => p.Value.Ips.Contains(clientIp)))
+            // Check current player state.
+            if (player.Limbo == LimboStates.NotLimbo)
             {
-                var authData = matchedPuidEntry.Value;
-                client.Puid = matchedPuidEntry.Key;
-                client.FriendCode = authData.FriendCode;
-                _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4})", Code, client.Name, client.Id, client.HashedPuid(), client.FriendCode);
+                return GameJoinResult.FromError(GameJoinError.InvalidLimbo);
             }
-            else
+
+            var clientIp = client.Connection.EndPoint.Address.ToString();
+            var matchingUser = TokenController.AuthClientData.Where(x => !x.Used && x.Name == client.Name && (x.PreIp == clientIp || _tokenController.CustomCompareIps(x.PreIp, x.RealIp))).FirstOrDefault();
+
+            if (player.Client.Puid == string.Empty)
             {
-                client.Puid = string.Empty;
-                client.FriendCode = string.Empty;
-
-                if (Client._antiCheatConfig!.ForceAuthenticationOrKick)
+                if (matchingUser != null)
                 {
-                    _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Kicking player.", Code, client.Name, client.Id);
-                    return GameJoinResult.CreateCustomError("[Imposter Anticheat+]\nServer cannot auth you. Try disable your http proxy!\nIf this still happens, seek help at <nobr><link=\"https://discord.gg/tohe\">dsc.gg/tohe</nobr></link> ");
-                }
+                    if (matchingUser.CreatedAt < DateTime.UtcNow.AddMinutes(-1))
+                    {
+                        matchingUser.Used = true;
+                        TokenController.AuthClientData.Remove(matchingUser);
+                        return GameJoinResult.CreateCustomError("[NikoCat233]\nTimeout Auth.\nPlease Retry Login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
+                    }
 
-                _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+                    matchingUser.Used = true;
+                    matchingUser.RealIp = clientIp;
+                    player.Client.Puid = matchingUser.Puid;
+                    player.Client.FriendCode = matchingUser.FriendCode;
+                    _logger.LogInformation("{0} - Player {1} ({2}) is assigned puid as {3} ({4}) from http ip ({5}), real ip ({6})", Code, client.Name, client.Id, TokenController.HashedPuid(player.Client.Puid), client.FriendCode, matchingUser.PreIp, client.Connection.EndPoint.Address);
+                }
+                else if (_antiCheatConfig.ForceAuthOrKick)
+                {
+                    _logger.LogInformation("{0} - Player {1} ({2}) ({3}) is not assigned a puid. Kicking.", Code, client.Name, client.Id, clientIp);
+                    return GameJoinResult.CreateCustomError("[NikoCat233]\nServer cannot auth you. Try disable your proxy!\nIf you are on Moblie Data, try turn on and off Flight Mode and retry login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
+                }
+                else
+                {
+                    _logger.LogWarning("{0} - Player {1} ({2}) ({3}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id, clientIp);
+                }
             }
 
             if (client.Puid != string.Empty)
             {
-                if (MatchmakerService._httpServerConfig.UseEacCheck && MatchmakerService._eacFunctions.CheckHashPUIDExists(client.Puid))
+                if (_httpServerConfig.UseEacCheck && (_tokenController._eacFunctions.CheckHashPUIDExists(TokenController.HashedPuid(client.Puid)) || _tokenController._eacFunctions.CheckFriendCodeExists(client.FriendCode.ToLower())))
                 {
                     _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is eac banned previously.");
-                    return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nYou are banned by EAC previously.\n {0}", client.HashedPuid()));
+                    return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nYou are banned by EAC previously.\n {0}", TokenController.HashedPuid(client.Puid) + " " + client.FriendCode.ToLower()));
                 }
 
                 if (_bannedPuids.Contains(client.Puid))
@@ -274,22 +273,6 @@ namespace Impostor.Server.Net.State
                     _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is puid banned previously.");
                     return GameJoinResult.FromError(GameJoinError.Banned);
                 }
-
-                if (Client._antiCheatConfig.MaxOnlineFromSameIp != 0)
-                {
-                    var count2 = _clientManager.Clients.Count(x => x.Puid == client.Puid && x.Connection.IsConnected);
-                    if (count2 > Client._antiCheatConfig!.MaxOnlineFromSameIp)
-                    {
-                        _logger.LogInformation("Client {0} ({1}) x {2} reached max clients online Puid limit. Kicked.", client.Name, client.Connection.EndPoint.Address.ToString(), count2);
-                        return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nToo many clients from a same puid.\n({0}) x {1}", client.HashedPuid().ToString(), count2));
-                    }
-                }
-            }
-
-            // Check current player state.
-            if (player.Limbo == LimboStates.NotLimbo)
-            {
-                return GameJoinResult.FromError(GameJoinError.InvalidLimbo);
             }
 
             if (GameState == GameStates.Ended)

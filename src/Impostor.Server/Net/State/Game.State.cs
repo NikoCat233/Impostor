@@ -6,7 +6,6 @@ using Impostor.Api.Net;
 using Impostor.Hazel;
 using Impostor.Server.Events;
 using Impostor.Server.Net.Hazel;
-using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 
 namespace Impostor.Server.Net.State
@@ -38,15 +37,6 @@ namespace Impostor.Server.Net.State
             }
 
             _logger.LogInformation("{0} - Player {1} ({2}) has left. hashpuid : {3}", Code, player.Client.Name, playerId, player.Client.HashedPuid());
-
-            if (ClientManager._puids.TryGetValue(player.Client.Puid, out var existingToken))
-            {
-                if (existingToken.Clients.Contains(playerId))
-                {
-                    existingToken.Clients.Remove(playerId);
-                    ClientManager._puids[player.Client.Puid] = existingToken;
-                }
-            }
 
             if (GameState == GameStates.Starting || GameState == GameStates.Started || GameState == GameStates.NotStarted)
             {

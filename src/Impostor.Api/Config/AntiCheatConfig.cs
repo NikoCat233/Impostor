@@ -24,14 +24,11 @@ namespace Impostor.Api.Config
 
         public bool EnableOwnershipChecks { get; set; } = true;
 
-        public bool ForceAuthenticationOrKick { get; set; } = false;
+        public bool ForceAuthOrKick { get; set; } = false;
 
         public bool EnableRoleChecks { get; set; } = true;
 
         public bool EnableTargetChecks { get; set; } = true;
-
-        // Set 0 = no limit
-        public int MaxOnlineFromSameIp { get; set; } = 0;
 
         public bool ForbidProtocolExtensions { get; set; } = true;
 

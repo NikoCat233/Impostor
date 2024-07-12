@@ -10,7 +10,6 @@ using Impostor.Api.Net;
 using Impostor.Api.Net.Manager;
 using Impostor.Hazel;
 using Impostor.Server.Events.Client;
-using Impostor.Server.Http;
 using Impostor.Server.Net.Factories;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,15 +26,12 @@ namespace Impostor.Server.Net.Manager
         private readonly IClientFactory _clientFactory;
         private int _idLast;
 
-        public static Dictionary<string, TokenController.UserPayload> _puids;
-
         public ClientManager(ILogger<ClientManager> logger, IEventManager eventManager, IClientFactory clientFactory, ICompatibilityManager compatibilityManager, IOptions<CompatibilityConfig> compatibilityConfig)
         {
             _logger = logger;
             _eventManager = eventManager;
             _clientFactory = clientFactory;
             _clients = new ConcurrentDictionary<int, ClientBase>();
-            _puids = new Dictionary<string, TokenController.UserPayload>();
             _compatibilityManager = compatibilityManager;
             _compatibilityConfig = compatibilityConfig.Value;
         }

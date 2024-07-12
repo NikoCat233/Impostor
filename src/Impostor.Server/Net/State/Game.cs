@@ -14,6 +14,7 @@ using Impostor.Api.Net;
 using Impostor.Api.Net.Manager;
 using Impostor.Api.Net.Messages.S2C;
 using Impostor.Server.Events;
+using Impostor.Server.Http;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,9 @@ namespace Impostor.Server.Net.State
         private readonly ICompatibilityManager _compatibilityManager;
         private readonly CompatibilityConfig _compatibilityConfig;
         private readonly TimeoutConfig _timeoutConfig;
+        private readonly AntiCheatConfig _antiCheatConfig;
+        private readonly HttpServerConfig _httpServerConfig;
+        private readonly TokenController _tokenController;
 
         public Game(
             ILogger<Game> logger,
@@ -46,7 +50,10 @@ namespace Impostor.Server.Net.State
             IEventManager eventManager,
             ICompatibilityManager compatibilityManager,
             IOptions<CompatibilityConfig> compatibilityConfig,
-            IOptions<TimeoutConfig> timeoutConfig)
+            IOptions<TimeoutConfig> timeoutConfig,
+            IOptions<AntiCheatConfig> antiCheatOptions,
+            IOptions<HttpServerConfig> httpServerOptions,
+            TokenController tokenController)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -67,6 +74,9 @@ namespace Impostor.Server.Net.State
             _compatibilityManager = compatibilityManager;
             _compatibilityConfig = compatibilityConfig.Value;
             _timeoutConfig = timeoutConfig.Value;
+            _antiCheatConfig = antiCheatOptions.Value;
+            _httpServerConfig = httpServerOptions.Value;
+            _tokenController = tokenController;
             Items = new ConcurrentDictionary<object, object>();
         }
 

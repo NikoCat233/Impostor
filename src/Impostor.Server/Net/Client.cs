@@ -20,7 +20,7 @@ namespace Impostor.Server.Net
     internal class Client : ClientBase
     {
         private readonly ILogger<Client> _logger;
-        public static AntiCheatConfig? _antiCheatConfig;
+        private readonly AntiCheatConfig? _antiCheatConfig;
         private readonly ClientManager _clientManager;
         private readonly GameManager _gameManager;
         private readonly ICustomMessageManager<ICustomRootMessage> _customMessageManager;
@@ -73,7 +73,7 @@ namespace Impostor.Server.Net
                 CheatCategory.ColorLimits => _antiCheatConfig.EnableColorLimitChecks,
                 CheatCategory.NameLimits => _antiCheatConfig.EnableNameLimitChecks,
                 CheatCategory.Ownership => _antiCheatConfig.EnableOwnershipChecks,
-                CheatCategory.AuthError => _antiCheatConfig.ForceAuthenticationOrKick, // Not used
+                CheatCategory.AuthError => _antiCheatConfig.ForceAuthOrKick, // Not used
                 CheatCategory.Role => _antiCheatConfig.EnableRoleChecks,
                 CheatCategory.Target => _antiCheatConfig.EnableTargetChecks,
                 CheatCategory.Other => true,
@@ -158,14 +158,6 @@ namespace Impostor.Server.Net
                         switch (result.Error)
                         {
                             case GameJoinError.None:
-                                var clientIp = Connection.EndPoint.Address.ToString();
-                                var matchedPuidEntry = ClientManager._puids.FirstOrDefault(p => p.Value.Ips.Contains(clientIp));
-                                if (ClientManager._puids.Any(p => p.Value.Ips.Contains(clientIp)))
-                                {
-                                    matchedPuidEntry.Value.Clients.Add(Id);
-                                    ClientManager._puids[matchedPuidEntry.Key] = matchedPuidEntry.Value;
-                                }
-
                                 break;
                             case GameJoinError.InvalidClient:
                                 await DisconnectAsync(DisconnectReason.Custom, "Client is in an invalid state.");
@@ -417,15 +409,6 @@ namespace Impostor.Server.Net
             }
 
             _logger.LogInformation("Client {0} disconnecting, reason: {1}", Id, reason);
-
-            if (Puid != null && Puid != string.Empty && ClientManager._puids.TryGetValue(Puid, out var existingToken))
-            {
-                if (existingToken.Clients.Contains(Id))
-                {
-                    existingToken.Clients.Remove(Id);
-                    ClientManager._puids[Puid] = existingToken;
-                }
-            }
 
             _clientManager.Remove(this);
         }

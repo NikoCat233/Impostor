@@ -3,17 +3,14 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Impostor.Api.Config;
 using Impostor.Api.Games;
 using Impostor.Api.Games.Managers;
 using Impostor.Api.Innersloth;
-using Impostor.Server.Net.Manager;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Serilog;
 
 namespace Impostor.Server.Http;
 
@@ -27,7 +24,7 @@ public sealed class GamesController : ControllerBase
     private readonly IGameManager _gameManager;
     private readonly ListingManager _listingManager;
     private readonly HostServer _hostServer;
-    private readonly ILogger _logger = Log.Logger;
+    private readonly TokenController _tokenController;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GamesController"/> class.
@@ -35,12 +32,13 @@ public sealed class GamesController : ControllerBase
     /// <param name="gameManager">GameManager containing a list of games.</param>
     /// <param name="listingManager">ListingManager responsible for filtering.</param>
     /// <param name="serverConfig">Impostor configuration section containing the public ip address of this server.</param>
-    public GamesController(IGameManager gameManager, ListingManager listingManager, IOptions<ServerConfig> serverConfig)
+    public GamesController(IGameManager gameManager, ListingManager listingManager, IOptions<ServerConfig> serverConfig, TokenController tokenController)
     {
         _gameManager = gameManager;
         _listingManager = listingManager;
         var config = serverConfig.Value;
         _hostServer = HostServer.From(IPAddress.Parse(config.ResolvePublicIp()), config.PublicPort);
+        _tokenController = tokenController;
     }
 
     /// <summary>
@@ -54,7 +52,7 @@ public sealed class GamesController : ControllerBase
     [HttpGet]
     public IActionResult Index(int mapId, GameKeywords lang, int numImpostors, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        switch (CheckMmToken(authorization.ToString()))
+        switch (_tokenController.CheckMMToken(authorization.ToString()))
         {
             case DisconnectReason.Unknown:
                 var token = JsonSerializer.Deserialize<TokenController.Token>(Convert.FromBase64String(authorization.Parameter));
@@ -83,12 +81,11 @@ public sealed class GamesController : ControllerBase
     /// Get the address a certain game is hosted at.
     /// </summary>
     /// <param name="gameId">The id of the game that should be retrieved.</param>
-    /// <param name="authorization">Authorization.</param>
     /// <returns>The server this game is hosted on.</returns>
     [HttpPost]
     public IActionResult Post(int gameId, [FromHeader] AuthenticationHeaderValue authorization)
     {
-        switch (CheckMmToken(authorization.ToString()))
+        switch (_tokenController.CheckMMToken(authorization.ToString()))
         {
             case DisconnectReason.Unknown:
                 var code = new GameCode(gameId);
@@ -115,14 +112,11 @@ public sealed class GamesController : ControllerBase
     /// <summary>
     /// Get the address to host a new game on.
     /// </summary>
-    /// <summary>
-    /// <param name="authorization">Authorization.</param>
-    /// </summary>
     /// <returns>The address of this server.</returns>
     [HttpPut]
     public IActionResult Put([FromHeader] AuthenticationHeaderValue authorization)
     {
-        switch (CheckMmToken(authorization.ToString()))
+        switch (_tokenController.CheckMMToken(authorization.ToString()))
         {
             case DisconnectReason.Unknown:
                 return Ok(_hostServer);
@@ -145,67 +139,7 @@ public sealed class GamesController : ControllerBase
 #pragma warning restore CS0618
     }
 
-    public DisconnectReason CheckMmToken(string bearerToken)
-    {
-        try
-        {
-            // Check if the token starts with "Bearer "
-            if (!bearerToken.StartsWith("Bearer "))
-            {
-                throw new ArgumentException("Invalid bearer token");
-            }
-
-            // Remove the "Bearer " prefix
-            var jwt = bearerToken.Substring("Bearer ".Length);
-
-            // Decode the base64 encoded JSON
-            var bytes = Convert.FromBase64String(jwt);
-            var json = Encoding.UTF8.GetString(bytes);
-
-            // Parse the JSON
-            var jsonDocument = JsonDocument.Parse(json);
-            var root = jsonDocument.RootElement;
-
-            // Extract the `Content` object
-            if (root.TryGetProperty("Content", out var contentProperty))
-            {
-                // Extract the `Puid` and `Hash` values
-                if (contentProperty.TryGetProperty("Puid", out var puidProperty) && root.TryGetProperty("Hash", out var hashProperty))
-                {
-                    if (ClientManager._puids.TryGetValue(puidProperty.ToString(), out var existingToken))
-                    {
-                        if (existingToken.Hashes.Contains(hashProperty.ToString()))
-                        {
-                            return DisconnectReason.Unknown;
-                        }
-                        else
-                        {
-                            return DisconnectReason.NotAuthorized;
-                        }
-                    }
-                    else
-                    {
-                        return DisconnectReason.NotAuthorized;
-                    }
-                }
-                else
-                {
-                    throw new ArgumentException("Can not get puid and hash");
-                }
-            }
-            else
-            {
-                throw new ArgumentException("No Content found");
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.Warning($"Failed to extract and print Puid and Hash from JWT: {e.Message}");
-            return DisconnectReason.ServerError;
-        }
-    }
-
-    public class HostServer
+    private class HostServer
     {
         [JsonPropertyName("Ip")]
         public required long Ip { get; init; }

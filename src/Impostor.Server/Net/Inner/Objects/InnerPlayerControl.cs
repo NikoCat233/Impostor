@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Impostor.Api;
+using Impostor.Api.Config;
 using Impostor.Api.Events.Managers;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Innersloth.Customization;
@@ -20,6 +21,7 @@ using Impostor.Server.Net.Inner.Objects.Components;
 using Impostor.Server.Net.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Impostor.Server.Net.Inner.Objects
 {
@@ -31,13 +33,15 @@ namespace Impostor.Server.Net.Inner.Objects
         private readonly ILogger<InnerPlayerControl> _logger;
         private readonly IEventManager _eventManager;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly AntiCheatConfig _antiCheatConfig;
 
-        public InnerPlayerControl(ICustomMessageManager<ICustomRpc> customMessageManager, Game game, ILogger<InnerPlayerControl> logger, IServiceProvider serviceProvider, IEventManager eventManager, IDateTimeProvider dateTimeProvider) : base(customMessageManager, game)
+        public InnerPlayerControl(ICustomMessageManager<ICustomRpc> customMessageManager, Game game, ILogger<InnerPlayerControl> logger, IServiceProvider serviceProvider, IEventManager eventManager, IDateTimeProvider dateTimeProvider, IOptions<AntiCheatConfig> antiCheatOptions) : base(customMessageManager, game)
         {
             _game = game;
             _logger = logger;
             _eventManager = eventManager;
             _dateTimeProvider = dateTimeProvider;
+            _antiCheatConfig = antiCheatOptions.Value;
 
             Physics = ActivatorUtilities.CreateInstance<InnerPlayerPhysics>(serviceProvider, this, _eventManager, game);
             NetworkTransform = ActivatorUtilities.CreateInstance<InnerCustomNetworkTransform>(serviceProvider, this, game);
@@ -1082,7 +1086,7 @@ namespace Impostor.Server.Net.Inner.Objects
             IsMurdering = target;
 
             // Check if host authority mode is on
-            if (_game.IsHostAuthoritive || Client._antiCheatConfig!.ForcePassCmdToHost)
+            if (_game.IsHostAuthoritive || _antiCheatConfig!.ForcePassCmdToHost)
             {
                 // Pass the RPC on unharmed, the client will handle it
                 return true;
