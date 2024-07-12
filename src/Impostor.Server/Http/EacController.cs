@@ -36,10 +36,15 @@ namespace Impostor.Server.Http
                 try
                 {
                     using var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(5);
                     string url = EndPointURL + token;
                     string json = await client.GetStringAsync(url);
                     List<EacData> eacDataList = JsonSerializer.Deserialize<List<EacData>>(json);
                     _eacList = new EACList { EACDataList = eacDataList };
+                }
+                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+                {
+                    _logger.Error("The request timed out while retrieving EAC data.");
                 }
                 catch (Exception ex)
                 {

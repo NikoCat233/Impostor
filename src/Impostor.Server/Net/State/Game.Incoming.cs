@@ -247,11 +247,12 @@ namespace Impostor.Server.Net.State
                 }
                 else if (_antiCheatConfig.ForceAuthOrKick)
                 {
+                    _logger.LogWarning("{0} - Player {1} ({2}) ({3}) is not assigned a puid. Kicking.", Code, client.Name, client.Id, clientIp);
                     return GameJoinResult.CreateCustomError("[NikoCat233]\nServer cannot auth you. Try disable your proxy!\nIf you are on Moblie Data, try turn on and off Flight Mode and retry login.\n<nobr><link=\"https://au.niko233.me/trouble_en.html\">See Trouble Shooting</nobr></link> ");
                 }
                 else
                 {
-                    _logger.LogWarning("{0} - Player {1} ({2}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id);
+                    _logger.LogWarning("{0} - Player {1} ({2}) ({3}) is not assigned a puid. Still letting it in.", Code, client.Name, client.Id, clientIp);
                 }
             }
 
