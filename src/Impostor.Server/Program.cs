@@ -46,6 +46,8 @@ namespace Impostor.Server
             try
             {
                 Log.Information("Starting Impostor v{0}", DotnetUtils.Version);
+                Log.Information("This build of Impostor is modified by NikoCat233, do not share or spread. Thank you!");
+                Log.Information("QQ: 1529729259;  Github: NikoCat233; Website: au.niko233.me");
                 CreateHostBuilder(args).Build().Run();
                 return 0;
             }

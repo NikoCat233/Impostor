@@ -7,6 +7,7 @@ using Impostor.Server.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 namespace Impostor.Server.Net
 {
@@ -50,6 +51,9 @@ namespace Impostor.Server.Net
                 _serverConfig.ResolvePublicIp(),
                 _serverConfig.PublicPort);
 
+            _logger.LogInformation("This build of Impostor is modified by NikoCat233, do not share or spread. Thank you!");
+            _logger.LogInformation("QQ: 1529729259;  Github: NikoCat233; Website: au.niko233.me");
+
             if (_serverConfig.PublicIp == "127.0.0.1")
             {
                 // NOTE: If this warning annoys you, set your PublicIp to "localhost"
@@ -69,6 +73,8 @@ namespace Impostor.Server.Net
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogWarning("Matchmaker is shutting down!");
+            _logger.LogInformation("This build of Impostor is modified by NikoCat233, do not share or spread. Thank you!");
+            _logger.LogInformation("QQ: 1529729259;  Github: NikoCat233; Website: au.niko233.me");
             await _matchmaker.StopAsync();
         }
 

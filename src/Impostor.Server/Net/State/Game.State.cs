@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
@@ -36,7 +36,7 @@ namespace Impostor.Server.Net.State
                 return false;
             }
 
-            _logger.LogInformation("{0} - Player {1} ({2}) has left.", Code, player.Client.Name, playerId);
+            _logger.LogInformation("{0} - Player {1} ({2}) ({3}) has left.", Code, player.Client.Name, playerId, player.Client.Connection.EndPoint.ToString());
 
             if (GameState == GameStates.Starting || GameState == GameStates.Started || GameState == GameStates.NotStarted)
             {

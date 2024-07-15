@@ -9,5 +9,7 @@ namespace Impostor.Api.Config
         public bool BanIpFromGame { get; set; } = true;
 
         public bool ForceAuthOrKick { get; set; } = false;
+
+        public bool KickObviousCheat { get; set; } = false;
     }
 }

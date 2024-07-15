@@ -407,6 +407,62 @@ namespace Impostor.Server.Net.Inner.Objects
                     break;
                 }
 
+                case unchecked((RpcCalls)101):
+                {
+                    try
+                    {
+                        var firstString = reader.ReadString();
+                        var secondString = reader.ReadString();
+                        reader.ReadInt32();
+
+                        var flag = string.IsNullOrEmpty(firstString) && string.IsNullOrEmpty(secondString);
+
+                        if (!flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, "Obvious - Client tried to send AUM Chat Rpc"))
+                        {
+                            _logger.LogWarning("AUM Message Info:\nSender: {0}\nContents: {1}", firstString, secondString);
+                            return false;
+                        }
+                    }
+
+                    // Do nothing
+                    catch
+                    {
+                    }
+
+                    break;
+                }
+
+                case unchecked((RpcCalls)42069):
+                {
+                    try
+                    {
+                        var id = reader.ReadByte();
+                        var flag = id == sender.Character!.PlayerId;
+
+                        if (flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, "Obvious - Client tried to send AUM Rpc"))
+                        {
+                            return false;
+                        }
+                    }
+
+                    // Do nothing
+                    catch
+                    {
+                    }
+
+                    break;
+                }
+
+                case unchecked((RpcCalls)420):
+                {
+                    var flag = reader.Length - reader.Position == 0;
+                    if (flag && await sender.Client.ReportCheatAsync(RpcCalls.PlayAnimation, "Obvious - Client tried to send SickoMenu Rpc"))
+                    {
+                        return false;
+                    }
+
+                    break;
+                }
                 default:
                     return await base.HandleRpcAsync(sender, target, call, reader);
             }

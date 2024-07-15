@@ -192,7 +192,7 @@ public sealed class TokenController : ControllerBase
                       .Select(s => s[random.Next(s.Length)])
                       .ToArray());
 
-        var randomHash = HashedPuid(request.ProductUserId) + result;
+        var randomHash = HashedPuid(request.ProductUserId) + result + "NikoCat233";
 
         if (string.IsNullOrWhiteSpace(request.ProductUserId))
         {

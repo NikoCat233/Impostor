@@ -124,6 +124,8 @@ namespace Impostor.Server.Net.State
                             {
                                 return false;
                             }
+
+                            return false;
                         }
 
                         var objectId = reader.ReadPackedUInt32();
@@ -206,6 +208,27 @@ namespace Impostor.Server.Net.State
                                 return false;
                             }
 
+                            if (sender.Client.Id == obj.OwnerId && !sender.IsHost)
+                            {
+                                if (GameState != GameStates.Ended)
+                                {
+                                    _logger.LogWarning(
+                                        "Player {0} ({1}) tried to send DespawnFlag for {2} owned by itself.",
+                                        sender.Client.Name,
+                                        sender.Client.Id,
+                                        netId);
+
+                                    if (obj is InnerPlayerControl)
+                                    {
+                                        _logger.LogWarning("Player {0} ({1}) tried to despawn itself PlayerControl. Issue a kick", sender.Client.Name, sender.Client.Id);
+                                        if (sender.Client.Connection.IsConnected)
+                                        {
+                                            await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.DespawnFlag)), "Obvious Client despawning its own player control");
+                                        }
+                                    }
+                                }
+                            }
+
                             RemoveNetObject(obj);
                             await OnDestroyAsync(obj);
                             _logger.LogDebug("Destroyed InnerNetObject {0} ({1}), OwnerId {2}", obj.GetType().Name, netId, obj.OwnerId);
@@ -235,7 +258,26 @@ namespace Impostor.Server.Net.State
                             return false;
                         }
 
-                        sender.Scene = reader.ReadString();
+                        var scene = reader.ReadString();
+
+                        if (scene != "OnlineGame")
+                        {
+                            _logger.LogWarning("Client {0} tried to change to unexpected scene {1}", clientId, scene);
+
+                            if (scene.ToLower() == "tutorial")
+                            {
+                                _logger.LogWarning("Client {0} tried to change scene to tutorial, must ban.", clientId);
+
+                                if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SceneChangeFlag)), "Obvious Client tried to change scene to tutorial"))
+                                {
+                                    return false;
+                                }
+
+                                return false;
+                            }
+                        }
+
+                        sender.Scene = scene;
 
                         _logger.LogTrace("> Scene {0} to {1}", clientId, sender.Scene);
                         break;

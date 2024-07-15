@@ -77,7 +77,7 @@ namespace Impostor.Server.Net.State
 
         public async ValueTask HandleKickPlayer(int playerId, bool isBan)
         {
-            _logger.LogInformation("{0} - Player {1} has left.", Code, playerId);
+            _logger.LogInformation("{0} - Player {1} was kicked. IsBan: {2}.", Code, playerId, isBan);
 
             using var message = MessageWriter.Get(MessageType.Reliable);
 
