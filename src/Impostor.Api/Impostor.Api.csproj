@@ -18,6 +18,7 @@
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Impostor/Impostor</RepositoryUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -12,6 +12,7 @@ using Impostor.Api.Net.Manager;
 using Impostor.Api.Utils;
 using Impostor.Hazel.Extensions;
 using Impostor.Server.Events;
+using Impostor.Server.Http;
 using Impostor.Server.Net;
 using Impostor.Server.Net.Custom;
 using Impostor.Server.Net.Factories;
@@ -99,7 +100,10 @@ namespace Impostor.Server
                     services.Configure<AntiCheatConfig>(host.Configuration.GetSection(AntiCheatConfig.Section));
                     services.Configure<CompatibilityConfig>(host.Configuration.GetSection(CompatibilityConfig.Section));
                     services.Configure<ServerConfig>(host.Configuration.GetSection(ServerConfig.Section));
+                    services.Configure<HttpServerConfig>(host.Configuration.GetSection(HttpServerConfig.Section));
 
+                    services.AddSingleton<EacController.EACFunctions>();
+                    services.AddSingleton<TokenController>();
                     services.AddSingleton<ClientManager>();
                     services.AddSingleton<IClientManager>(p => p.GetRequiredService<ClientManager>());
 

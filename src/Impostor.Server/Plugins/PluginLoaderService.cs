@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +21,8 @@ namespace Impostor.Server.Plugins
             _serviceProvider = serviceProvider;
             _plugins = plugins;
         }
+
+        public IReadOnlyList<PluginInformation> Plugins => _plugins;
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {

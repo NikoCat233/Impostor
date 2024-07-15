@@ -27,6 +27,22 @@ namespace Impostor.Api.Net
         string Name { get; }
 
         /// <summary>
+        ///     Gets or sets the puid that was provided by the player in the client.
+        /// </summary>
+        /// <remarks>
+        ///     The puid is provided by the player and can be used to store persisted data.
+        /// </remarks>
+        public string Puid { get; set; }
+
+        /// <summary>
+        ///     Gets or sets the friend code that was provided by the player in the client.
+        /// </summary>
+        /// <remarks>
+        ///     The friend code is provided by the player and can be used to store persisted data.
+        /// </remarks>
+        public string FriendCode { get; set; }
+
+        /// <summary>
         ///     Gets the language.
         /// </summary>
         Language Language { get; }

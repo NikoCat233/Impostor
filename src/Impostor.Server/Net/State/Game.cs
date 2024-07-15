@@ -13,6 +13,7 @@ using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
 using Impostor.Api.Net.Messages.S2C;
 using Impostor.Server.Events;
+using Impostor.Server.Http;
 using Impostor.Server.Net.Manager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,8 +28,12 @@ namespace Impostor.Server.Net.State
         private readonly ClientManager _clientManager;
         private readonly ConcurrentDictionary<int, ClientPlayer> _players;
         private readonly HashSet<IPAddress> _bannedIps;
+        private readonly HashSet<string> _bannedPuids;
         private readonly IEventManager _eventManager;
         private readonly CompatibilityConfig _compatibilityConfig;
+        private readonly TokenController _tokenController;
+        private readonly AntiCheatConfig _antiCheatConfig;
+        private readonly HttpServerConfig _httpServerConfig;
 
         public Game(
             ILogger<Game> logger,
@@ -39,13 +44,17 @@ namespace Impostor.Server.Net.State
             GameOptionsData options,
             ClientManager clientManager,
             IEventManager eventManager,
-            IOptions<CompatibilityConfig> compatibilityConfig)
+            IOptions<CompatibilityConfig> compatibilityConfig,
+            TokenController tokenController,
+            IOptions<AntiCheatConfig> antiCheatOptions,
+            IOptions<HttpServerConfig> httpServerOptions)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _gameManager = gameManager;
             _players = new ConcurrentDictionary<int, ClientPlayer>();
             _bannedIps = new HashSet<IPAddress>();
+            _bannedPuids = new HashSet<string>();
 
             PublicIp = publicIp;
             Code = code;
@@ -56,6 +65,9 @@ namespace Impostor.Server.Net.State
             _clientManager = clientManager;
             _eventManager = eventManager;
             _compatibilityConfig = compatibilityConfig.Value;
+            _tokenController = tokenController;
+            _antiCheatConfig = antiCheatOptions.Value;
+            _httpServerConfig = httpServerOptions.Value;
             Items = new ConcurrentDictionary<object, object>();
         }
 

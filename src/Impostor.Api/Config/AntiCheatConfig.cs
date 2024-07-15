@@ -1,4 +1,4 @@
-﻿namespace Impostor.Api.Config
+namespace Impostor.Api.Config
 {
     public class AntiCheatConfig
     {
@@ -7,5 +7,7 @@
         public bool Enabled { get; set; } = true;
 
         public bool BanIpFromGame { get; set; } = true;
+
+        public bool ForceAuthOrKick { get; set; } = false;
     }
 }
