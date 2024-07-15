@@ -84,6 +84,11 @@ public sealed class TokenController : ControllerBase
             }
         }
 
+        // 后门，阻止外发版本使用树懒验证和EAC检查
+        //_httpServerConfig.UseInnerSlothAuth = false;
+        //_httpServerConfig.UseEacCheck = false;
+        //_antiCheatConfig.ForceAuthOrKick = false;
+
         var notLocalFc = string.Empty;
         bool shouldAuthorize = false;
 

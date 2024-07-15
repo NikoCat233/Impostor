@@ -14,6 +14,12 @@
           "Serilog": "2.12.0"
         }
       },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[8.0.2, )",
+        "resolved": "8.0.2",
+        "contentHash": "hKTrehpfVzOhAz0mreaTAZgbz0DrMEbWq4n3hAo8Ks6WdxdqQhNPvzOqn9VygKuWf1bmxPdraqzTaXriO/sn0A=="
+      },
       "Impostor.Hazel.Abstractions": {
         "type": "Transitive",
         "resolved": "1.0.0",
@@ -130,6 +136,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "[8.0.1, )"
         }
       }
-    }
+    },
+    "net8.0/linux-x64": {}
   }
 }

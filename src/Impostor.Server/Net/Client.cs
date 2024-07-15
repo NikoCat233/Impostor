@@ -322,7 +322,7 @@ namespace Impostor.Server.Net
                 _logger.LogError(ex, "Exception caught in client disconnection.");
             }
 
-            _logger.LogInformation("Client {0} disconnecting, reason: {1}", Id, reason);
+            _logger.LogInformation("Client {0} disconnecting, reason: {1}, Ip: {2}", Id, reason, Connection.EndPoint.ToString());
             _clientManager.Remove(this);
         }
 

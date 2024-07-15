@@ -13,9 +13,9 @@
 
   <PropertyGroup>
     <AssemblyName>Impostor.Server</AssemblyName>
-    <AssemblyTitle>Impostor.Server</AssemblyTitle>
+    <AssemblyTitle>Impostor.Server - modded by NikoCat233</AssemblyTitle>
     <Product>Impostor.Server</Product>
-    <Copyright>Copyright © AeonLucid 2020</Copyright>
+    <Copyright>AeonLucid 2020, modified by NikoCat233</Copyright>
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
