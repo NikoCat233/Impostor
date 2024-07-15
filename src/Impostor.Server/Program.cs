@@ -10,6 +10,7 @@ using Impostor.Api.Games;
 using Impostor.Api.Games.Managers;
 using Impostor.Api.Net.Custom;
 using Impostor.Api.Net.Manager;
+using Impostor.Api.Plugins;
 using Impostor.Api.Utils;
 using Impostor.Hazel.Extensions;
 using Impostor.Server.Events;

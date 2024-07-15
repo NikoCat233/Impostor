@@ -27,8 +27,8 @@ namespace Impostor.Api.Net.Messages.S2C
                 if (post20220202)
                 {
                     // ProductUserId and FriendCode are not yet known, so set them to an empty string
-                    writer.Write(string.Empty);
-                    writer.Write(string.Empty);
+                    writer.Write(ply.Client.Puid);
+                    writer.Write(ply.Client.FriendCode);
                 }
             }
 

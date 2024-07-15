@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Impostor.Api.Games;
 using Impostor.Api.Games.Managers;
+using Impostor.Api.Http;
 using Impostor.Api.Innersloth;
-using Impostor.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
