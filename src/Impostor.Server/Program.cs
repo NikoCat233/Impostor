@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Runtime.Loader;
 using Impostor.Api.Config;
@@ -21,6 +22,8 @@ using Impostor.Server.Net.Messages;
 using Impostor.Server.Plugins;
 using Impostor.Server.Recorder;
 using Impostor.Server.Utils;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -74,8 +77,10 @@ namespace Impostor.Server
             var configuration = CreateConfiguration(args);
             var pluginConfig = configuration.GetSection("PluginLoader")
                 .Get<PluginConfig>() ?? new PluginConfig();
+            var httpConfig = configuration.GetSection(HttpServerConfig.Section)
+                .Get<HttpServerConfig>() ?? new HttpServerConfig();
 
-            return Host.CreateDefaultBuilder(args)
+            var hostBuilder = Host.CreateDefaultBuilder(args)
                 .UseContentRoot(Directory.GetCurrentDirectory())
 #if DEBUG
                 .UseEnvironment(Environment.GetEnvironmentVariable("IMPOSTOR_ENV") ?? "Development")
@@ -102,9 +107,9 @@ namespace Impostor.Server
                     services.Configure<ServerConfig>(host.Configuration.GetSection(ServerConfig.Section));
                     services.Configure<HttpServerConfig>(host.Configuration.GetSection(HttpServerConfig.Section));
 
+                    services.AddSingleton<ClientManager>();
                     services.AddSingleton<EacController.EACFunctions>();
                     services.AddSingleton<TokenController>();
-                    services.AddSingleton<ClientManager>();
                     services.AddSingleton<IClientManager>(p => p.GetRequiredService<ClientManager>());
 
                     if (debug.GameRecorderEnabled)
@@ -128,6 +133,7 @@ namespace Impostor.Server
 
                     services.AddSingleton<GameManager>();
                     services.AddSingleton<IGameManager>(p => p.GetRequiredService<GameManager>());
+                    services.AddSingleton<ListingManager>();
 
                     services.AddEventPools();
                     services.AddHazel();
@@ -182,14 +188,52 @@ namespace Impostor.Server
 #else
                         .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
 #endif
+                        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
                         .Enrich.FromLogContext()
                         .WriteTo.Console()
-                        .ReadFrom.Configuration(context.Configuration, ConfigurationAssemblySource.AlwaysScanDllFiles);
+                        .ReadFrom.Configuration(context.Configuration, new ConfigurationReaderOptions(ConfigurationAssemblySource.AlwaysScanDllFiles));
 
                     AssemblyLoadContext.Default.Resolving -= LoadSerilogAssembly;
                 })
                 .UseConsoleLifetime()
                 .UsePluginLoader(pluginConfig);
+
+            if (httpConfig.Enabled)
+            {
+                hostBuilder.ConfigureWebHostDefaults(builder =>
+                {
+                    builder.ConfigureServices(services =>
+                    {
+                        services.AddControllers();
+                    });
+
+                    builder.Configure(app =>
+                    {
+                        var pluginLoaderService = app.ApplicationServices.GetRequiredService<PluginLoaderService>();
+                        foreach (var pluginInformation in pluginLoaderService.Plugins)
+                        {
+                            if (pluginInformation.Startup is IPluginHttpStartup httpStartup)
+                            {
+                                httpStartup.ConfigureWebApplication(app);
+                            }
+                        }
+
+                        app.UseRouting();
+
+                        app.UseEndpoints(endpoints =>
+                        {
+                            endpoints.MapControllers();
+                        });
+                    });
+
+                    builder.ConfigureKestrel(serverOptions =>
+                    {
+                        serverOptions.Listen(IPAddress.Parse(httpConfig.ListenIp), httpConfig.ListenPort);
+                    });
+                });
+            }
+
+            return hostBuilder;
         }
     }
 }
