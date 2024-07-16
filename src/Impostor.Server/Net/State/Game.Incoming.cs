@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Impostor.Api.Config;
 using Impostor.Api.Games;
 using Impostor.Api.Innersloth;
 using Impostor.Api.Net;
@@ -276,6 +275,7 @@ namespace Impostor.Server.Net.State
         private async ValueTask HandleJoinGameNext(ClientPlayer sender, bool isNew)
         {
             _logger.LogInformation("{0} - Player {1} ({2}) is rejoining from ({3}) with v{4}", Code, sender.Client.Name, sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString());
+            _errroVL.Remove(sender.Client.Id);
 
             // Add player to the game.
             if (isNew)

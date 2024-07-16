@@ -7,7 +7,6 @@ using Impostor.Server.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Serilog;
 
 namespace Impostor.Server.Net
 {
