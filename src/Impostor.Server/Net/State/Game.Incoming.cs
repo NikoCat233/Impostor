@@ -124,6 +124,7 @@ namespace Impostor.Server.Net.State
         {
             _logger.LogInformation("{0} - Player {1} ({2}) ({3}) is joining from ({4}) with v{5}, Authority:{6}", Code, sender.Client.Name, sender.Client.HashedPuid(), sender.Client.Id, sender.Client.Connection.EndPoint.Address + ":" + sender.Client.Connection.EndPoint.Port, sender.Client.GameVersion.ToString(), sender.Client.GameVersion.HasDisableServerAuthorityFlag);
             _sentOnlineGameClients.Remove(sender.Client.Id);
+            _errorVL.Remove(sender.Client.Id);
 
             // Should only happen on first player join(Host).
             if (!_decidedAuthoritive)

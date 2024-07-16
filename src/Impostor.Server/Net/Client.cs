@@ -105,250 +105,269 @@ namespace Impostor.Server.Net
 
         public override async ValueTask HandleMessageAsync(IMessageReader reader, MessageType messageType)
         {
-            var flag = reader.Tag;
-
-            _logger.LogTrace("[{0}] Server got {1}.", Id, MessageFlags.FlagToString(flag));
-
-            switch (flag)
+            try
             {
-                case MessageFlags.HostGame:
+                var flag = reader.Tag;
+
+                _logger.LogTrace("[{0}] Server got {1}.", Id, MessageFlags.FlagToString(flag));
+
+                switch (flag)
                 {
-                    // Read game settings.
-                    Message00HostGameC2S.Deserialize(reader, out var gameOptions, out _, out var gameFilterOptions);
-
-                    // Create game.
-                    var game = await _gameManager.CreateAsync(this, gameOptions, gameFilterOptions);
-
-                    if (game == null)
+                    case MessageFlags.HostGame:
                     {
-                        await DisconnectAsync(DisconnectReason.GameNotFound);
-                        return;
-                    }
+                        // Read game settings.
+                        Message00HostGameC2S.Deserialize(reader, out var gameOptions, out _, out var gameFilterOptions);
 
-                    // Code in the packet below will be used in JoinGame.
-                    using (var writer = MessageWriter.Get(MessageType.Reliable))
-                    {
-                        Message00HostGameS2C.Serialize(writer, game.Code);
-                        await Connection.SendAsync(writer);
-                    }
+                        // Create game.
+                        var game = await _gameManager.CreateAsync(this, gameOptions, gameFilterOptions);
 
-                    break;
-                }
-
-                case MessageFlags.JoinGame:
-                {
-                    Message01JoinGameC2S.Deserialize(reader, out var gameCode);
-
-                    var game = _gameManager.Find(gameCode);
-                    if (game == null)
-                    {
-                        await DisconnectAsync(DisconnectReason.GameNotFound);
-                        return;
-                    }
-
-                    var result = await game.AddClientAsync(this);
-
-                    switch (result.Error)
-                    {
-                        case GameJoinError.None:
-                            break;
-                        case GameJoinError.InvalidClient:
-                            await DisconnectAsync(DisconnectReason.Custom, "Client is in an invalid state.");
-                            break;
-                        case GameJoinError.Banned:
-                            await DisconnectAsync(DisconnectReason.Banned);
-                            break;
-                        case GameJoinError.GameFull:
-                            await DisconnectAsync(DisconnectReason.GameFull);
-                            break;
-                        case GameJoinError.InvalidLimbo:
-                            await DisconnectAsync(DisconnectReason.Custom, "Invalid limbo state while joining.");
-                            break;
-                        case GameJoinError.GameStarted:
-                            await DisconnectAsync(DisconnectReason.GameStarted);
-                            break;
-                        case GameJoinError.GameDestroyed:
-                            await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.Destroyed);
-                            break;
-                        case GameJoinError.ClientOutdated:
-                            await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.ClientOutdated);
-                            break;
-                        case GameJoinError.ClientTooNew:
-                            await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.ClientTooNew);
-                            break;
-                        case GameJoinError.Custom:
-                            await DisconnectAsync(DisconnectReason.Custom, result.Message);
-                            break;
-                        default:
-                            await DisconnectAsync(DisconnectReason.Custom, "Unknown error.");
-                            break;
-                    }
-
-                    break;
-                }
-
-                case MessageFlags.StartGame:
-                {
-                    if (!IsPacketAllowed(reader, true))
-                    {
-                        return;
-                    }
-
-                    await Player!.Game.HandleStartGame(reader);
-                    break;
-                }
-
-                // No idea how this flag is triggered.
-                case MessageFlags.RemoveGame:
-                    break;
-
-                case MessageFlags.RemovePlayer:
-                {
-                    if (!IsPacketAllowed(reader, true))
-                    {
-                        return;
-                    }
-
-                    Message04RemovePlayerC2S.Deserialize(
-                        reader,
-                        out var playerId,
-                        out var reason);
-
-                    await Player!.Game.HandleRemovePlayer(playerId, (DisconnectReason)reason);
-                    break;
-                }
-
-                case MessageFlags.GameData:
-                case MessageFlags.GameDataTo:
-                {
-                    if (!IsPacketAllowed(reader, false))
-                    {
-                        return;
-                    }
-
-                    var toPlayer = flag == MessageFlags.GameDataTo;
-
-                    var position = reader.Position;
-                    var verified = await Player!.Game.HandleGameDataAsync(reader, Player, toPlayer);
-                    reader.Seek(position);
-
-                    if (verified && Player != null)
-                    {
-                        // Broadcast packet to all other players.
-                        using (var writer = MessageWriter.Get(messageType))
+                        if (game == null)
                         {
-                            if (toPlayer)
-                            {
-                                var target = reader.ReadPackedInt32();
-                                reader.CopyTo(writer);
-                                await Player.Game.SendToAsync(writer, target);
-                            }
-                            else
-                            {
-                                reader.CopyTo(writer);
-                                await Player.Game.SendToAllExceptAsync(writer, Id);
-                            }
+                            await DisconnectAsync(DisconnectReason.GameNotFound);
+                            return;
                         }
-                    }
 
-                    break;
-                }
+                        // Code in the packet below will be used in JoinGame.
+                        using (var writer = MessageWriter.Get(MessageType.Reliable))
+                        {
+                            Message00HostGameS2C.Serialize(writer, game.Code);
+                            await Connection.SendAsync(writer);
+                        }
 
-                case MessageFlags.EndGame:
-                {
-                    if (!IsPacketAllowed(reader, true))
-                    {
-                        return;
-                    }
-
-                    Message08EndGameC2S.Deserialize(
-                        reader,
-                        out var gameOverReason);
-
-                    await Player!.Game.HandleEndGame(reader, gameOverReason);
-                    break;
-                }
-
-                case MessageFlags.AlterGame:
-                {
-                    if (!IsPacketAllowed(reader, true))
-                    {
-                        return;
-                    }
-
-                    Message10AlterGameC2S.Deserialize(
-                        reader,
-                        out var gameTag,
-                        out var value);
-
-                    if (gameTag != AlterGameTags.ChangePrivacy)
-                    {
-                        return;
-                    }
-
-                    await Player!.Game.HandleAlterGame(reader, Player, value);
-                    break;
-                }
-
-                case MessageFlags.KickPlayer:
-                {
-                    if (!IsPacketAllowed(reader, true))
-                    {
-                        return;
-                    }
-
-                    Message11KickPlayerC2S.Deserialize(
-                        reader,
-                        out var playerId,
-                        out var isBan);
-
-                    await Player!.Game.HandleKickPlayer(playerId, isBan);
-                    break;
-                }
-
-                case MessageFlags.GetGameListV2:
-                {
-                    await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.UdpMatchmakingUnsupported);
-                    return;
-                }
-
-                case MessageFlags.SetActivePodType:
-                {
-                    Message21SetActivePodType.Deserialize(reader, out _);
-                    break;
-                }
-
-                case MessageFlags.QueryPlatformIds:
-                {
-                    Message22QueryPlatformIdsC2S.Deserialize(reader, out var gameCode);
-                    await OnQueryPlatformIds(gameCode);
-                    break;
-                }
-
-                default:
-                    if (_customMessageManager.TryGet(flag, out var customRootMessage))
-                    {
-                        await customRootMessage.HandleMessageAsync(this, reader, messageType);
                         break;
                     }
 
-                    _logger.LogWarning("Server received unknown flag {0}.", flag);
-                    break;
-            }
+                    case MessageFlags.JoinGame:
+                    {
+                        Message01JoinGameC2S.Deserialize(reader, out var gameCode);
+
+                        var game = _gameManager.Find(gameCode);
+                        if (game == null)
+                        {
+                            await DisconnectAsync(DisconnectReason.GameNotFound);
+                            return;
+                        }
+
+                        var result = await game.AddClientAsync(this);
+
+                        switch (result.Error)
+                        {
+                            case GameJoinError.None:
+                                break;
+                            case GameJoinError.InvalidClient:
+                                await DisconnectAsync(DisconnectReason.Custom, "Client is in an invalid state.");
+                                break;
+                            case GameJoinError.Banned:
+                                await DisconnectAsync(DisconnectReason.Banned);
+                                break;
+                            case GameJoinError.GameFull:
+                                await DisconnectAsync(DisconnectReason.GameFull);
+                                break;
+                            case GameJoinError.InvalidLimbo:
+                                await DisconnectAsync(DisconnectReason.Custom, "Invalid limbo state while joining.");
+                                break;
+                            case GameJoinError.GameStarted:
+                                await DisconnectAsync(DisconnectReason.GameStarted);
+                                break;
+                            case GameJoinError.GameDestroyed:
+                                await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.Destroyed);
+                                break;
+                            case GameJoinError.ClientOutdated:
+                                await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.ClientOutdated);
+                                break;
+                            case GameJoinError.ClientTooNew:
+                                await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.ClientTooNew);
+                                break;
+                            case GameJoinError.Custom:
+                                await DisconnectAsync(DisconnectReason.Custom, result.Message);
+                                break;
+                            default:
+                                await DisconnectAsync(DisconnectReason.Custom, "Unknown error.");
+                                break;
+                        }
+
+                        break;
+                    }
+
+                    case MessageFlags.StartGame:
+                    {
+                        if (!IsPacketAllowed(reader, true))
+                        {
+                            return;
+                        }
+
+                        await Player!.Game.HandleStartGame(reader);
+                        break;
+                    }
+
+                    // No idea how this flag is triggered.
+                    case MessageFlags.RemoveGame:
+                        break;
+
+                    case MessageFlags.RemovePlayer:
+                    {
+                        if (!IsPacketAllowed(reader, true))
+                        {
+                            return;
+                        }
+
+                        Message04RemovePlayerC2S.Deserialize(
+                            reader,
+                            out var playerId,
+                            out var reason);
+
+                        await Player!.Game.HandleRemovePlayer(playerId, (DisconnectReason)reason);
+                        break;
+                    }
+
+                    case MessageFlags.GameData:
+                    case MessageFlags.GameDataTo:
+                    {
+                        if (!IsPacketAllowed(reader, false))
+                        {
+                            return;
+                        }
+
+                        var toPlayer = flag == MessageFlags.GameDataTo;
+
+                        var position = reader.Position;
+                        var verified = await Player!.Game.HandleGameDataAsync(reader, Player, toPlayer);
+                        reader.Seek(position);
+
+                        if (verified && Player != null)
+                        {
+                            // Broadcast packet to all other players.
+                            using (var writer = MessageWriter.Get(messageType))
+                            {
+                                if (toPlayer)
+                                {
+                                    var target = reader.ReadPackedInt32();
+                                    reader.CopyTo(writer);
+                                    await Player.Game.SendToAsync(writer, target);
+                                }
+                                else
+                                {
+                                    reader.CopyTo(writer);
+                                    await Player.Game.SendToAllExceptAsync(writer, Id);
+                                }
+                            }
+                        }
+
+                        break;
+                    }
+
+                    case MessageFlags.EndGame:
+                    {
+                        if (!IsPacketAllowed(reader, true))
+                        {
+                            return;
+                        }
+
+                        Message08EndGameC2S.Deserialize(
+                            reader,
+                            out var gameOverReason);
+
+                        await Player!.Game.HandleEndGame(reader, gameOverReason);
+                        break;
+                    }
+
+                    case MessageFlags.AlterGame:
+                    {
+                        if (!IsPacketAllowed(reader, true))
+                        {
+                            return;
+                        }
+
+                        Message10AlterGameC2S.Deserialize(
+                            reader,
+                            out var gameTag,
+                            out var value);
+
+                        if (gameTag != AlterGameTags.ChangePrivacy)
+                        {
+                            return;
+                        }
+
+                        await Player!.Game.HandleAlterGame(reader, Player, value);
+                        break;
+                    }
+
+                    case MessageFlags.KickPlayer:
+                    {
+                        if (!IsPacketAllowed(reader, true))
+                        {
+                            return;
+                        }
+
+                        Message11KickPlayerC2S.Deserialize(
+                            reader,
+                            out var playerId,
+                            out var isBan);
+
+                        await Player!.Game.HandleKickPlayer(playerId, isBan);
+                        break;
+                    }
+
+                    case MessageFlags.GetGameListV2:
+                    {
+                        await DisconnectAsync(DisconnectReason.Custom, DisconnectMessages.UdpMatchmakingUnsupported);
+                        return;
+                    }
+
+                    case MessageFlags.SetActivePodType:
+                    {
+                        Message21SetActivePodType.Deserialize(reader, out _);
+                        break;
+                    }
+
+                    case MessageFlags.QueryPlatformIds:
+                    {
+                        Message22QueryPlatformIdsC2S.Deserialize(reader, out var gameCode);
+                        await OnQueryPlatformIds(gameCode);
+                        break;
+                    }
+
+                    default:
+                        if (_customMessageManager.TryGet(flag, out var customRootMessage))
+                        {
+                            await customRootMessage.HandleMessageAsync(this, reader, messageType);
+                            break;
+                        }
+
+                        _logger.LogWarning("Server received unknown flag {0}.", flag);
+                        break;
+                }
 
 #if DEBUG
-            if (flag != MessageFlags.GameData &&
-                flag != MessageFlags.GameDataTo &&
-                flag != MessageFlags.EndGame &&
-                reader.Position < reader.Length)
-            {
-                _logger.LogWarning(
-                    "Server did not consume all bytes from {0} ({1} < {2}).",
-                    flag,
-                    reader.Position,
-                    reader.Length);
-            }
+                if (flag != MessageFlags.GameData &&
+                    flag != MessageFlags.GameDataTo &&
+                    flag != MessageFlags.EndGame &&
+                    reader.Position < reader.Length)
+                {
+                    _logger.LogWarning(
+                        "Server did not consume all bytes from {0} ({1} < {2}).",
+                        flag,
+                        reader.Position,
+                        reader.Length);
+                }
 #endif
+            }
+            catch (Exception ex)
+            {
+                var flag = reader.Tag;
+
+                _logger.LogError("[{0}] Server got {1} but failed to handle.", Id, MessageFlags.FlagToString(flag));
+                _logger.LogError(ex, "Exception caught in client message handling.");
+
+                if (Player != null)
+                {
+                    await Player.RemoveAsync(DisconnectReason.Custom, "Server failed to handle your packet (root message).\nThis maybe a server-side bug.\nSorry for any inconvenience caused.");
+                }
+                else
+                {
+                    _logger.LogWarning("Player {0}({1}) who sent this packet is null ClientPlayer server side", Name, Id);
+                }
+            }
         }
 
         public override async ValueTask HandleDisconnectAsync(string reason)
