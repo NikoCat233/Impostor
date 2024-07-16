@@ -1,6 +1,6 @@
 # Server configuration
 
-Some information about all the possible configurations. Click [here](https://github.com/Impostor/Impostor/blob/master/src/Impostor.Server/config-full.json) to see all the possible config options.
+Some information about all the possible configurations. Click [here](https://github.com/Impostor/Impostor/blob/master/src/Impostor.Server/full-config-example.json) to see all the possible config options.
 
 ## Options
 
@@ -44,12 +44,13 @@ Impostor has an Anticheat that makes it possible to kick cheaters from games aut
 
 ### Compatibility
 
-Impostor has two compatibility options which allow some extra flexibility but may not work properly. Enabling either of these options is not recommended.
+Impostor has some compatibility options which allow some extra flexibility but may not work properly. Enabling any of these options is not recommended. When contacting support, please mention which of these options are enabled.
 
-| Key                      | Default | Value                                                                                                                                                                          |
-| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **AllowNewGameVersions** | `false` | Warning: Setting this option to `true` is unsupported and may cause issues when large updates to Among Us are released. Allow future versions of Among Us to join your server. |
-| **AllowVersionMixing**   | `false` | Allow players using different game versions to play in one lobby.                                                                                                              |
+| Key                         | Default | Value                                                                                                                                                                                                                                                            |
+|-----------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **AllowFutureGameVersions** | `false` | Warning: Setting this option to `true` is unsupported and may cause issues when large updates to Among Us are released, but can be useful when a small patch is released. Allows future versions of Among Us to join your server.                                |
+| **AllowHostAuthority**      | `false` | Certain Among Us mods allow disabling some server-authoritative features, which also changes some code paths in the client. These code paths have not undergone as much testing and contain bugs, which can't be fixed from the Impostor side. Use with caution. |
+| **AllowVersionMixing**      | `false` | Allows players using different game versions to play in one lobby that have not been marked by the Impostor developers as compatible.                                                                                                                            |
 
 ### Debug
 
@@ -99,7 +100,7 @@ Other Serilog sinks are also supported, but are out of scope for this documentat
 
 ### File
 
-The simplest option to configure is by using the `config.json` file next to the server executable. For all possible options see the [config-full.json](https://github.com/Impostor/Impostor/blob/dev/src/Impostor.Server/config-full.json) file.
+The simplest option to configure is by using the `config.json` file next to the server executable. For all possible options see the [full-config-example.json](https://github.com/Impostor/Impostor/blob/master/src/Impostor.Server/full-config-example.json) file.
 
 ### Environment variables
 
