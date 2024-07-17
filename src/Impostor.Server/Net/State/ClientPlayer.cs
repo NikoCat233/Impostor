@@ -70,7 +70,15 @@ namespace Impostor.Server.Net.State
 
         public async ValueTask RemoveAsync(DisconnectReason reason, string custom = "")
         {
-            await Game.HandleRemovePlayer(Client.Id, reason);
+            if (custom.Contains("Cheating", StringComparison.OrdinalIgnoreCase))
+            {
+                await Game.HandleRemovePlayer(Client.Id, DisconnectReason.Hacking);
+            }
+            else
+            {
+                await Game.HandleRemovePlayer(Client.Id, reason);
+            }
+
             await Client.DisconnectAsync(reason, custom);
         }
 

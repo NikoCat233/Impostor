@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -105,7 +105,7 @@ namespace Impostor.Server.Net.Manager
                 return;
             }
 
-            _logger.LogDebug("Remove game with code {0} ({1}).", GameCodeParser.IntToGameName(gameCode), gameCode);
+            _logger.LogInformation("Remove game with code {0} ({1}).", GameCodeParser.IntToGameName(gameCode), gameCode);
 
             await _eventManager.CallAsync(new GameDestroyedEvent(game));
         }

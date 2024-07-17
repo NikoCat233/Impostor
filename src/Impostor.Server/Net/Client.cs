@@ -54,7 +54,7 @@ namespace Impostor.Server.Net
                 Player?.Game.BanIp(Connection.EndPoint.Address);
             }
 
-            await DisconnectAsync(DisconnectReason.Hacking, context.Name + ": " + message);
+            await Player!.RemoveAsync(DisconnectReason.Custom, string.Format("Cheating for sure\n{0}", Connection.EndPoint.Address.ToString()));
 
             return true;
         }

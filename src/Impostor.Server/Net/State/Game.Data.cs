@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Impostor.Api;
 using Impostor.Api.Innersloth;
+using Impostor.Api.Net;
 using Impostor.Api.Net.Inner;
 using Impostor.Api.Unity;
 using Impostor.Server.Events.Meeting;
@@ -214,7 +215,7 @@ namespace Impostor.Server.Net.State
 
                                 if (sender.Client.Id == obj.OwnerId && !sender.IsHost)
                                 {
-                                    if (GameState != GameStates.Ended)
+                                    if (sender.Limbo == LimboStates.NotLimbo && GameState != GameStates.Ended)
                                     {
                                         _logger.LogWarning(
                                             "Player {0} ({1}) tried to send DespawnFlag for {2} owned by itself.",
