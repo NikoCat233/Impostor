@@ -21,6 +21,7 @@ namespace Impostor.Server.Net.State
         {
             GameState = GameStates.Starting;
 
+            _logger.LogInformation("{0} - Game started. Host is [{1}] {2}. Authoritive: {3}", Code, Host!.Client.Id, Host!.Client.Name, IsHostAuthoritive);
             using var packet = MessageWriter.Get(MessageType.Reliable);
             message.CopyTo(packet);
             await SendToAllAsync(packet);
@@ -31,6 +32,8 @@ namespace Impostor.Server.Net.State
         public async ValueTask HandleEndGame(IMessageReader message, GameOverReason gameOverReason)
         {
             GameState = GameStates.Ended;
+
+            _logger.LogInformation("{0} - Game ended. Host is [{1}] {2}. Authoritive: {3}", Code, Host!.Client.Id, Host!.Client.Name, IsHostAuthoritive);
 
             // Broadcast end of the game.
             using (var packet = MessageWriter.Get(MessageType.Reliable))

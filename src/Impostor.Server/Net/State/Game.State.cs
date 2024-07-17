@@ -45,11 +45,6 @@ namespace Impostor.Server.Net.State
                     player.Character.PlayerInfo.Disconnected = true;
                     player.Character.PlayerInfo.LastDeathReason = DeathReason.Disconnect;
                 }
-
-                if (player.Character != null)
-                {
-                    await SendObjectDespawn(player.Character);
-                }
             }
 
             player.Client.Player = null;
@@ -117,11 +112,19 @@ namespace Impostor.Server.Net.State
             // Pick the first player as new host.
             var host = _players
                 .Select(p => p.Value)
+                .Where(x => x.Client.GameVersion.HasDisableServerAuthorityFlag)
                 .FirstOrDefault();
 
             if (host == null)
             {
-                return;
+                host = _players
+                .Select(p => p.Value)
+                .FirstOrDefault();
+
+                if (host == null)
+                {
+                    return;
+                }
             }
 
             foreach (var player in _players.Values)
@@ -156,6 +159,7 @@ namespace Impostor.Server.Net.State
                 WriteAlterGameMessage(message, false, IsPublic);
 
                 player.Limbo = LimboStates.NotLimbo;
+                _sentOnlineGameClients.Remove(player.Client.Id);
 
                 await SendToAsync(message, player.Client.Id);
             }
