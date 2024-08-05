@@ -32,7 +32,15 @@ namespace Impostor.Server.Net.State
         /// </summary>
         private const int CurrentClient = -3;
 
+        /// <summary>
+        ///     Used to list objects that are managed by the game server.
+        /// </summary>
         private const int ServerOwned = -4;
+
+        /// <summary>
+        ///     The first NetId that is considered as a server owned Network ID that the client will not allocate by default.
+        /// </summary>
+        private const int MinServerNetId = 100000;
 
         private static readonly Dictionary<uint, Type> SpawnableObjects = new()
         {
@@ -59,7 +67,7 @@ namespace Impostor.Server.Net.State
 
         private readonly Dictionary<int, int> _errorVL = new();
 
-        private uint _nextNetId = 100000;
+        private uint _nextNetId = MinServerNetId;
 
         public T? FindObjectByNetId<T>(uint netId)
             where T : IInnerNetObject
@@ -464,7 +472,15 @@ namespace Impostor.Server.Net.State
 
                 case InnerPlayerInfo playerInfo:
                 {
-                    GameNet.GameData.AddPlayer(playerInfo);
+                    if (!GameNet.GameData.AddPlayer(playerInfo))
+                    {
+                        _logger.LogWarning(
+                            "Could not add PlayerInfo for playerId {PlayerId} with NetId {newId}, already have NetId {oldNetId}",
+                            playerInfo.PlayerId,
+                            playerInfo.NetId,
+                            GameNet.GameData.GetPlayerById(playerInfo.PlayerId)?.NetId);
+                    }
+
                     break;
                 }
 
@@ -503,7 +519,7 @@ namespace Impostor.Server.Net.State
                         control.PlayerInfo = playerInfo;
 
                         // Reset PlayerInfo
-                        playerInfo.RoleType = RoleTypes.Crewmate;
+                        playerInfo.RoleType = null;
                         playerInfo.RoleWhenAlive = null;
                         playerInfo.Tasks.Clear();
                         playerInfo.IsDead = false;
@@ -582,41 +598,49 @@ namespace Impostor.Server.Net.State
             }
         }
 
-        private async ValueTask CheckPlayerInfos(ClientPlayer sender)
+        private async ValueTask SyncServerObjectsAsync(ClientPlayer sender)
         {
-            // Sync all server-owned objects
             foreach (var obj in _allObjectsFast.Values)
             {
-                if (obj.OwnerId == -4)
+                if (obj.OwnerId == ServerOwned)
                 {
-                    _logger.LogTrace("Sharing {Type} {NetId}", obj.GetType(), obj.NetId);
-                    await SendObjectSpawn(obj, sender.Client.Id);
+                    _logger.LogTrace("Syncing {Type} {NetId}", obj.GetType(), obj.NetId);
+                    await SendObjectSpawnAsync(obj, sender.Client.Id);
                 }
             }
+        }
 
-            // If the host doesn't disable server authority, spawn a player info for it
-            if (!IsHostAuthoritive && !GameNet.GameData.PlayersByClientId.ContainsKey(sender.Client.Id))
+        private async ValueTask SpawnPlayerInfoAsync(ClientPlayer sender)
+        {
+            // Hosts spawn PlayerInfo objects if they requested authority
+            if (IsHostAuthoritive)
             {
-                var playerInfo = (InnerPlayerInfo)ActivatorUtilities.CreateInstance(_serviceProvider, typeof(InnerPlayerInfo), this);
-                playerInfo.SpawnFlags = SpawnFlags.None;
-                playerInfo.NetId = _nextNetId++;
-                playerInfo.OwnerId = -4;
-                playerInfo.ClientId = sender.Client.Id;
-                playerInfo.PlayerId = GameNet.GameData.GetNextAvailablePlayerId();
-                playerInfo.FriendCode = sender.Client.FriendCode;
-                playerInfo.Puid = sender.Client.Puid;
-
-                if (!AddNetObject(playerInfo))
-                {
-                    _logger.LogTrace("Couldn't spawn PlayerInfo");
-                    playerInfo.NetId = uint.MaxValue;
-                    return;
-                }
-
-                _logger.LogTrace("Spawning PlayerInfo (netId {Netid})", playerInfo.NetId);
-                await OnSpawnAsync(sender, playerInfo);
-                await SendObjectSpawn(playerInfo);
+                return;
             }
+
+            // Only spawn a new PlayerInfo if one has not yet been spawned
+            if (GameNet.GameData.PlayersByClientId.ContainsKey(sender.Client.Id))
+            {
+                return;
+            }
+
+            var playerInfo = (InnerPlayerInfo)ActivatorUtilities.CreateInstance(_serviceProvider, typeof(InnerPlayerInfo), this);
+            playerInfo.SpawnFlags = SpawnFlags.None;
+            playerInfo.NetId = _nextNetId++;
+            playerInfo.OwnerId = ServerOwned;
+            playerInfo.ClientId = sender.Client.Id;
+            playerInfo.PlayerId = GameNet.GameData.GetNextAvailablePlayerId();
+
+            if (!AddNetObject(playerInfo))
+            {
+                _logger.LogError("Couldn't spawn PlayerInfo for {Name} ({ClientId})", sender.Client.Name, sender.Client.Id);
+                playerInfo.NetId = uint.MaxValue;
+                return;
+            }
+
+            _logger.LogTrace("Spawning PlayerInfo (netId {Netid})", playerInfo.NetId);
+            await OnSpawnAsync(sender, playerInfo);
+            await SendObjectSpawnAsync(playerInfo);
         }
 
         private bool AddNetObject(InnerNetObject obj)

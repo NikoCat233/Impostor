@@ -39,7 +39,6 @@ Impostor has an Anticheat that makes it possible to kick cheaters from games aut
 | **EnableOwnershipChecks**  | `true`    | Enables checks that check if players are allowed to perform a certain action on themself or another player.                                                                                                         |
 | **EnableRoleChecks**       | `true`    | Enables checks that check if players have the correct role when performing certain role abilities like venting or murdering.                                                                                        |
 | **EnableTargetChecks**     | `true`    | Enables checks that check if certain packets to everyone that should only have been sent to certain players or vice versa. This includes sending votes or network objects.                                          |
-
 | **ForbidProtocolExtensions** | `true`  | If disabled allows players to send network packets that go beyond the network packets sent by the vanilla game. This is necessary for most mods that need all players to install it.                                |
 
 ### Compatibility

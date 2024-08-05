@@ -385,7 +385,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
                     Rpc44SetRole.Deserialize(reader, out var role, out var _);
 
-                    if (role == RoleTypes.ImpostorGhost || role == RoleTypes.CrewmateGhost)
+                    if (role is RoleTypes.ImpostorGhost or RoleTypes.CrewmateGhost or RoleTypes.GuardianAngel)
                     {
                         PlayerInfo.RoleWhenAlive = PlayerInfo.RoleType;
                         PlayerInfo.IsDead = true;
@@ -1160,11 +1160,6 @@ namespace Impostor.Server.Net.Inner.Objects
 
         private async ValueTask<bool> HandleCheckVanish(ClientPlayer sender, float maxDuration)
         {
-            if (!await ValidateRole(RpcCalls.CheckVanish, sender, PlayerInfo, RoleTypes.Phantom))
-            {
-                return false;
-            }
-
             // TODO: Check if operation is taking place during lobby/meetings
             // TODO: Check max duration
             // If the game is host authoritive, the RPC is handled by the host, otherwise by the server
@@ -1194,11 +1189,6 @@ namespace Impostor.Server.Net.Inner.Objects
 
         private async ValueTask<bool> HandleCheckAppear(ClientPlayer sender, bool shouldAnimate)
         {
-            if (!await ValidateRole(RpcCalls.CheckAppear, sender, PlayerInfo, RoleTypes.Phantom))
-            {
-                return false;
-            }
-
             // If the game is host authoritive, the RPC is handled by the host, otherwise by the server
             if (_game.IsHostAuthoritive)
             {

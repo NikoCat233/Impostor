@@ -25,10 +25,10 @@ namespace Impostor.Server.Net.Inner.Objects
             return _allPlayers.TryGetValue(id, out var player) ? player : null;
         }
 
-        internal void AddPlayer(InnerPlayerInfo playerInfo)
+        internal bool AddPlayer(InnerPlayerInfo playerInfo)
         {
-            _allPlayers.TryAdd(playerInfo.PlayerId, playerInfo);
-            _allPlayersByClientId.TryAdd(playerInfo.ClientId, playerInfo);
+            return _allPlayers.TryAdd(playerInfo.PlayerId, playerInfo) &&
+                _allPlayersByClientId.TryAdd(playerInfo.ClientId, playerInfo);
         }
 
         internal void RemovePlayer(byte playerId)
@@ -43,7 +43,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
         internal byte GetNextAvailablePlayerId()
         {
-            for (byte i = 0; i < 255; i++)
+            for (byte i = 0; i < byte.MaxValue; i++)
             {
                 if (!Players.ContainsKey(i))
                 {
@@ -51,7 +51,7 @@ namespace Impostor.Server.Net.Inner.Objects
                 }
             }
 
-            return 255;
+            return byte.MaxValue;
         }
     }
 }

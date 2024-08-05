@@ -53,7 +53,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public RoleTypes? RoleWhenAlive { get; internal set; }
 
-        public bool Disconnected { get; internal set; } = false;
+        public bool Disconnected { get; internal set; }
 
         public bool IsImpostor => RoleType is RoleTypes.Impostor or RoleTypes.Shapeshifter or RoleTypes.ImpostorGhost or RoleTypes.Phantom;
 
@@ -145,7 +145,6 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public override ValueTask DeserializeAsync(IClientPlayer sender, IClientPlayer? target, IMessageReader reader, bool initialState)
         {
-            // TODO ac
             PlayerId = reader.ReadByte();
             ClientId = reader.ReadPackedInt32();
 
@@ -164,7 +163,10 @@ namespace Impostor.Server.Net.Inner.Objects
             Disconnected = (flag & 1) != 0;
             IsDead = (flag & 4) != 0;
 
-            RoleType = (RoleTypes)reader.ReadUInt16(); // TODO ignore the RoleType here and only trust the SetRole rpc?
+            // Ignore the RoleType here and only trust the SetRole RPC, as
+            // RoleType is not nullable in vanilla, while Impostor checks game
+            // starts based on assigned roles.
+            _ = (RoleTypes)reader.ReadUInt16();
 
             if (reader.ReadBoolean())
             {
@@ -184,8 +186,8 @@ namespace Impostor.Server.Net.Inner.Objects
             }
 
             // Impostor doesn't expose fields that aren't properly validated
-            reader.ReadString();
-            reader.ReadString();
+            reader.ReadString(); // FriendCode
+            reader.ReadString(); // PUID
 
             return ValueTask.CompletedTask;
         }
