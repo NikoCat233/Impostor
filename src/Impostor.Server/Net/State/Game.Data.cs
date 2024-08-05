@@ -325,6 +325,28 @@ namespace Impostor.Server.Net.State
                         // Disconnect handler was probably invoked, cancel the rest.
                         return false;
                     }
+
+                    if (reader.Tag is GameDataTag.RpcFlag && reader.Length >= 600)
+                    {
+                        // 针对354模组的预设rpc的修复
+                        // 354模组的预设rpc的长度为800，反复发包或者叠大包很容易导致客户掉线
+                        // 被迫采用none的方式发此包，以避免此问题
+                        var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                        reader.CopyTo(writer);
+                        writer.EndMessage();
+
+                        if (toPlayer)
+                        {
+                            await SendToAsync(writer, target!.Client.Id);
+                        }
+                        else
+                        {
+                            await SendToAllExceptAsync(writer, sender.Client.Id);
+                        }
+
+                        parent.RemoveMessage(reader);
+                        continue;
+                    }
                 }
 
                 return true;

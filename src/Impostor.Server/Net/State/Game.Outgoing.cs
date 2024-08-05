@@ -40,6 +40,23 @@ namespace Impostor.Server.Net.State
 
         public IMessageWriter StartRpc(uint targetNetId, RpcCalls callId, int? targetClientId = null, MessageType type = MessageType.Reliable)
         {
+            var writer = StartGameData(targetClientId, type);
+
+            writer.StartMessage(GameDataTag.RpcFlag);
+            writer.WritePacked(targetNetId);
+            writer.Write((byte)callId);
+
+            return writer;
+        }
+
+        public ValueTask FinishRpcAsync(IMessageWriter writer, int? targetClientId = null)
+        {
+            writer.EndMessage();
+            return FinishGameDataAsync(writer, targetClientId);
+        }
+
+        public IMessageWriter StartGameData(int? targetClientId = null, MessageType type = MessageType.Reliable)
+        {
             var writer = MessageWriter.Get(type);
 
             if (targetClientId == null || targetClientId < 0)
@@ -54,16 +71,11 @@ namespace Impostor.Server.Net.State
                 writer.WritePacked(targetClientId.Value);
             }
 
-            writer.StartMessage(GameDataTag.RpcFlag);
-            writer.WritePacked(targetNetId);
-            writer.Write((byte)callId);
-
             return writer;
         }
 
-        public ValueTask FinishRpcAsync(IMessageWriter writer, int? targetClientId = null)
+        public ValueTask FinishGameDataAsync(IMessageWriter writer, int? targetClientId = null)
         {
-            writer.EndMessage();
             writer.EndMessage();
 
             return targetClientId.HasValue
@@ -83,7 +95,6 @@ namespace Impostor.Server.Net.State
                 .Select(x => x.Value)
                 .ToArray();
 
-            // TODO: clean up post20220202 when versions before it are no longer supported.
             Message07JoinedGameS2C.Serialize(message, clear, Code, player.Client.Id, HostId, players, player.Client.GameVersion >= GameVersion.GetVersion(2022, 2, 2));
         }
 
