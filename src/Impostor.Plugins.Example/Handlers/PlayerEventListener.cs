@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Numerics;
 using System.Threading.Tasks;
 using Impostor.Api.Events;
@@ -22,7 +22,7 @@ namespace Impostor.Plugins.Example.Handlers
         [EventListener]
         public void OnPlayerSpawned(IPlayerSpawnedEvent e)
         {
-            _logger.LogInformation("Player {player} > spawned", e.PlayerControl.PlayerInfo.PlayerName);
+            _logger.LogTrace("Player {player} > spawned", e.PlayerControl.PlayerInfo.PlayerName);
 
             // Need to make a local copy because it might be possible that
             // the event gets changed after being handled.

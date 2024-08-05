@@ -30,6 +30,11 @@ namespace Impostor.Server.Net.State
 
         public async ValueTask HandleEndGame(IMessageReader message, GameOverReason gameOverReason)
         {
+            if (GameState == GameStates.Ended)
+            {
+                return;
+            }
+
             GameState = GameStates.Ended;
             _logger.LogInformation("{0} - Game ended. Host is [{1}] {2}.", Code, Host!.Client.Id, Host!.Client.Name);
 
