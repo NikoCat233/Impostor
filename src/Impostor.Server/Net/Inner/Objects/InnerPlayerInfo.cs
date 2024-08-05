@@ -67,7 +67,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public DateTimeOffset LastMurder { get; set; }
 
-        public uint PlayerLevel { get; private set; }
+        public uint PlayerLevel { get; internal set; }
 
         public override bool IsDirty
         {
