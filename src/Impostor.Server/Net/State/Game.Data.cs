@@ -326,7 +326,7 @@ namespace Impostor.Server.Net.State
                         return false;
                     }
 
-                    if (reader.Tag is GameDataTag.RpcFlag && reader.Length >= 600)
+                    if (reader.Tag is GameDataTag.RpcFlag && reader.Length >= 512)
                     {
                         // 针对354模组的预设rpc的修复
                         // 354模组的预设rpc的长度为800，反复发包或者叠大包很容易导致客户掉线
