@@ -145,7 +145,7 @@ namespace Impostor.Server.Net.State
                             }
                             else
                             {
-                                _logger.LogWarning("Received RpcFlag for unregistered NetId {0}.", netId);
+                                _logger.LogWarning("{0} - Received RpcFlag for unregistered NetId {1} from {2}", Code, netId, sender.Client.Id);
                             }
 
                             break;

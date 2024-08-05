@@ -93,7 +93,7 @@ namespace Impostor.Server.Net.State
                 {
                     if (playerInfo.OwnerId == ServerOwned)
                     {
-                        _logger.LogInformation("Destroying PlayerInfo {nid}", playerInfo.NetId);
+                        _logger.LogDebug("Destroying PlayerInfo {nid}", playerInfo.NetId);
                         GameNet.GameData.RemovePlayer(playerInfo.PlayerId);
                         RemoveNetObject(playerInfo);
 
