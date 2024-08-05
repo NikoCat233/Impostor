@@ -337,13 +337,12 @@ namespace Impostor.Server.Net.State
                                 }
                             }
 
-
-
                             sender.Scene = scene;
 
                             _logger.LogTrace("> Scene {0} to {1}", clientId, sender.Scene);
 
-                            await CheckPlayerInfos(sender);
+                            await SyncServerObjectsAsync(sender);
+                            await SpawnPlayerInfoAsync(sender);
 
                             break;
                         }
