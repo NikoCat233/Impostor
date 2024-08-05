@@ -103,6 +103,7 @@ namespace Impostor.Server.Net.State
                 while (parent.Position < parent.Length)
                 {
                     using var reader = parent.ReadMessage();
+                    var position = reader.Position;
 
                     _logger.LogTrace("Client {SenderId} sent GameData {Tag}", sender.Client.Id, (GameDataTag)reader.Tag);
 
@@ -402,6 +403,46 @@ namespace Impostor.Server.Net.State
                     {
                         // Disconnect handler was probably invoked, cancel the rest.
                         return false;
+                    }
+
+                    if (toPlayer && reader.Tag == (byte)GameDataTag.DataFlag)
+                    {
+                        reader.Seek(position);
+                        var netId = reader.ReadPackedUInt32();
+                        if (_allObjectsFast.TryGetValue(netId, out var obj))
+                        {
+                            if (obj is InnerPlayerInfo && obj.OwnerId == -2)
+                            {
+                                reader.Seek(position);
+
+                                var writer = StartGameData(target!.Client.Id, MessageType.Unreliable);
+                                reader.CopyTo(writer);
+                                writer.EndMessage();
+                                await SendToAsync(writer, target!.Client.Id);
+
+                                parent.RemoveMessage(reader);
+                                continue;
+                            }
+                        }
+                    }
+
+                    if (toPlayer && reader.Tag == (byte)GameDataTag.SpawnFlag)
+                    {
+                        reader.Seek(position);
+                        var objectId = reader.ReadPackedUInt32();
+
+                        if (objectId == SpawnableObjectIds[typeof(InnerPlayerInfo)])
+                        {
+                            reader.Seek(position);
+
+                            var writer = StartGameData(target!.Client.Id);
+                            reader.CopyTo(writer);
+                            writer.EndMessage();
+                            await SendToAsync(writer, target!.Client.Id);
+
+                            parent.RemoveMessage(reader);
+                            continue;
+                        }
                     }
                 }
 
