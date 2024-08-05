@@ -103,8 +103,8 @@ namespace Impostor.Server.Net.State
                 while (parent.Position < parent.Length)
                 {
                     using var reader = parent.ReadMessage();
-                    var position = reader.Position;
 
+                    var position = reader.Position;
                     _logger.LogTrace("Client {SenderId} sent GameData {Tag}", sender.Client.Id, (GameDataTag)reader.Tag);
 
                     switch ((GameDataTag)reader.Tag)
@@ -116,6 +116,27 @@ namespace Impostor.Server.Net.State
                             {
                                 _logger.LogTrace("Received Data for {NetId}, which is of type {Type}", netId, obj.GetType().Name);
                                 await obj.DeserializeAsync(sender, target, reader, false);
+
+                                if (obj.OwnerId == -2 && obj is InnerPlayerInfo)
+                                {
+                                    reader.Seek(position);
+
+                                    var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                                    reader.CopyTo(writer);
+                                    writer.EndMessage();
+
+                                    if (toPlayer)
+                                    {
+                                        await SendToAsync(writer, target!.Client.Id);
+                                    }
+                                    else
+                                    {
+                                        await SendToAllExceptAsync(writer, sender.Client.Id);
+                                    }
+
+                                    parent.RemoveMessage(reader);
+                                    break;
+                                }
                             }
                             else
                             {
@@ -140,6 +161,27 @@ namespace Impostor.Server.Net.State
 
                                 if (!await obj.HandleRpcAsync(sender, target, call, reader))
                                 {
+                                    parent.RemoveMessage(reader);
+                                    continue;
+                                }
+
+                                if (reader.Length > 200) // Normally a rpc should be within 100. gonna send it as none so wont cause huge packets.
+                                {
+                                    reader.Seek(position);
+
+                                    var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                                    reader.CopyTo(writer);
+                                    writer.EndMessage();
+
+                                    if (toPlayer)
+                                    {
+                                        await SendToAsync(writer, target!.Client.Id);
+                                    }
+                                    else
+                                    {
+                                        await SendToAllExceptAsync(writer, sender.Client.Id);
+                                    }
+
                                     parent.RemoveMessage(reader);
                                     continue;
                                 }
@@ -218,6 +260,22 @@ namespace Impostor.Server.Net.State
                                     }
 
                                     await OnSpawnAsync(sender, obj);
+                                }
+
+                                if (toPlayer)
+                                {
+                                    if (objectId == 11)
+                                    {
+                                        reader.Seek(position);
+
+                                        var writer = StartGameData(target!.Client.Id);
+                                        reader.CopyTo(writer);
+                                        writer.EndMessage();
+                                        await SendToAsync(writer, target!.Client.Id);
+
+                                        parent.RemoveMessage(reader);
+                                        continue;
+                                    }
                                 }
 
                                 continue;
@@ -403,46 +461,6 @@ namespace Impostor.Server.Net.State
                     {
                         // Disconnect handler was probably invoked, cancel the rest.
                         return false;
-                    }
-
-                    if (toPlayer && reader.Tag == (byte)GameDataTag.DataFlag)
-                    {
-                        reader.Seek(position);
-                        var netId = reader.ReadPackedUInt32();
-                        if (_allObjectsFast.TryGetValue(netId, out var obj))
-                        {
-                            if (obj is InnerPlayerInfo && obj.OwnerId == -2)
-                            {
-                                reader.Seek(position);
-
-                                var writer = StartGameData(target!.Client.Id, MessageType.Unreliable);
-                                reader.CopyTo(writer);
-                                writer.EndMessage();
-                                await SendToAsync(writer, target!.Client.Id);
-
-                                parent.RemoveMessage(reader);
-                                continue;
-                            }
-                        }
-                    }
-
-                    if (toPlayer && reader.Tag == (byte)GameDataTag.SpawnFlag)
-                    {
-                        reader.Seek(position);
-                        var objectId = reader.ReadPackedUInt32();
-
-                        if (objectId == SpawnableObjectIds[typeof(InnerPlayerInfo)])
-                        {
-                            reader.Seek(position);
-
-                            var writer = StartGameData(target!.Client.Id);
-                            reader.CopyTo(writer);
-                            writer.EndMessage();
-                            await SendToAsync(writer, target!.Client.Id);
-
-                            parent.RemoveMessage(reader);
-                            continue;
-                        }
                     }
                 }
 
