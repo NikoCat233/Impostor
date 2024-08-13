@@ -167,7 +167,7 @@ namespace Impostor.Server.Net.Inner.Objects
                         return false;
                     }
 
-                    Rpc06SetName.Deserialize(reader, out var name);
+                    Rpc06SetName.Deserialize(reader, out var _, out var name);
                     return await HandleSetName(sender, name);
                 }
 
@@ -191,7 +191,7 @@ namespace Impostor.Server.Net.Inner.Objects
                         return false;
                     }
 
-                    Rpc08SetColor.Deserialize(reader, out var color);
+                    Rpc08SetColor.Deserialize(reader, out var _, out var color);
                     return await HandleSetColor(sender, color);
                 }
 
@@ -251,7 +251,7 @@ namespace Impostor.Server.Net.Inner.Objects
                     }
 
                     Rpc38SetLevel.Deserialize(reader, out var level);
-                    return true;
+                    return await HandleSetLevel(sender, level);
                 }
 
                 case RpcCalls.ReportDeadBody:
@@ -383,8 +383,16 @@ namespace Impostor.Server.Net.Inner.Objects
                         return false;
                     }
 
-                    Rpc44SetRole.Deserialize(reader, out var role);
+                    Rpc44SetRole.Deserialize(reader, out var role, out var _);
+
+                    if (role is RoleTypes.ImpostorGhost or RoleTypes.CrewmateGhost or RoleTypes.GuardianAngel)
+                    {
+                        PlayerInfo.RoleWhenAlive = PlayerInfo.RoleType;
+                        PlayerInfo.IsDead = true;
+                    }
+
                     PlayerInfo.RoleType = role;
+                    PlayerInfo.IsDirty = true;
 
                     if (Game.GameState == GameStates.Starting && Game.Players.All(clientPlayer => clientPlayer.Character?.PlayerInfo.RoleType != null))
                     {
@@ -504,7 +512,7 @@ namespace Impostor.Server.Net.Inner.Objects
                         return false;
                     }
 
-                    Rpc55CheckShapeshift.Deserialize(reader, Game, out var playerControl, out var shouldAnimate);
+                    Rpc55CheckShapeshift.Deserialize(reader, Game, out var playerControl, out _);
                     break;
                 }
 
@@ -519,6 +527,56 @@ namespace Impostor.Server.Net.Inner.Objects
                     break;
                 }
 
+                case RpcCalls.CheckVanish:
+                {
+                    if (!await ValidateOwnership(call, sender) ||
+                        !await ValidateRole(call, sender, PlayerInfo, RoleTypes.Phantom) ||
+                        !await ValidateCmd(call, sender, target))
+                    {
+                        return false;
+                    }
+
+                    Rpc62CheckVanish.Deserialize(reader, out var maxDuration);
+                    return await HandleCheckVanish(sender, maxDuration);
+                }
+
+                case RpcCalls.StartVanish:
+                {
+                    if (!await ValidateHost(call, sender) ||
+                        !await ValidateBroadcast(call, sender, target))
+                    {
+                        return false;
+                    }
+
+                    Rpc63StartVanish.Deserialize(reader);
+                    return await HandleStartVanish(sender);
+                }
+
+                case RpcCalls.CheckAppear:
+                {
+                    if (!await ValidateOwnership(call, sender) ||
+                        !await ValidateRole(call, sender, PlayerInfo, RoleTypes.Phantom) ||
+                        !await ValidateCmd(call, sender, target))
+                    {
+                        return false;
+                    }
+
+                    Rpc64CheckAppear.Deserialize(reader, out var shouldAnimate);
+                    return await HandleCheckAppear(sender, shouldAnimate);
+                }
+
+                case RpcCalls.StartAppear:
+                {
+                    if (!await ValidateHost(call, sender) ||
+                        !await ValidateBroadcast(call, sender, target))
+                    {
+                        return false;
+                    }
+
+                    Rpc65StartAppear.Deserialize(reader, out var shouldAnimate);
+                    return await HandleStartAppear(sender, shouldAnimate);
+                }
+
                 default:
                     return await base.HandleRpcAsync(sender, target, call, reader);
             }
@@ -530,6 +588,7 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             PlayerInfo.IsDead = true;
             PlayerInfo.LastDeathReason = reason;
+            PlayerInfo.IsDirty = true;
         }
 
         internal void Protect(InnerPlayerControl guardianAngel)
@@ -546,6 +605,7 @@ namespace Impostor.Server.Net.Inner.Objects
             if (task != null)
             {
                 task.Complete = true;
+                PlayerInfo.IsDirty = true;
                 await _eventManager.CallAsync(new PlayerCompletedTaskEvent(Game, sender, this, task));
             }
             else
@@ -683,7 +743,7 @@ namespace Impostor.Server.Net.Inner.Objects
                 }
             }
 
-            PlayerInfo.PlayerName = name;
+            PlayerInfo.CurrentOutfit.PlayerName = name;
 
             return true;
         }
@@ -860,6 +920,20 @@ namespace Impostor.Server.Net.Inner.Objects
             return true;
         }
 
+        private async ValueTask<bool> HandleSetLevel(ClientPlayer sender, uint level)
+        {
+            if (Game.GameState == GameStates.Started &&
+                await sender.Client.ReportCheatAsync(RpcCalls.SetLevel, CheatCategory.GameFlow, "Client tried to set level while not in game"))
+            {
+                return false;
+            }
+
+            PlayerInfo.PlayerLevel = level;
+            PlayerInfo.IsDirty = true;
+
+            return true;
+        }
+
         private async ValueTask<bool> HandleCheckMurder(ClientPlayer sender, InnerPlayerControl? target)
         {
             if (!PlayerInfo.CanMurder(Game, _dateTimeProvider))
@@ -1030,6 +1104,62 @@ namespace Impostor.Server.Net.Inner.Objects
             if (startCounter != -1)
             {
                 await _eventManager.CallAsync(new PlayerSetStartCounterEvent(Game, sender, this, (byte)startCounter));
+            }
+
+            return true;
+        }
+
+        private async ValueTask<bool> HandleCheckVanish(ClientPlayer sender, float maxDuration)
+        {
+            // TODO: Check if operation is taking place during lobby/meetings
+            // TODO: Check max duration
+            // If the game is host authoritive, the RPC is handled by the host, otherwise by the server
+            if (_game.IsHostAuthoritive)
+            {
+                return true;
+            }
+            else
+            {
+                await StartVanishAsync();
+                return false;
+            }
+        }
+
+        private async ValueTask<bool> HandleStartVanish(ClientPlayer sender)
+        {
+            if (!_game.IsHostAuthoritive)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.StartVanish, CheatCategory.GameFlow, "Client tried to send StartVanish directly"))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private async ValueTask<bool> HandleCheckAppear(ClientPlayer sender, bool shouldAnimate)
+        {
+            // If the game is host authoritive, the RPC is handled by the host, otherwise by the server
+            if (_game.IsHostAuthoritive)
+            {
+                return true;
+            }
+            else
+            {
+                await StartAppearAsync(shouldAnimate);
+                return false;
+            }
+        }
+
+        private async ValueTask<bool> HandleStartAppear(ClientPlayer sender, bool shouldAnimate)
+        {
+            if (!_game.IsHostAuthoritive)
+            {
+                if (await sender.Client.ReportCheatAsync(RpcCalls.StartAppear, CheatCategory.GameFlow, "Client tried to send StartAppear directly"))
+                {
+                    return false;
+                }
             }
 
             return true;
