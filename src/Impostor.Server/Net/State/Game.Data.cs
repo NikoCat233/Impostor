@@ -561,7 +561,6 @@ namespace Impostor.Server.Net.State
                     {
                         player.Character = control;
                         player.DisableSpawnTimeout();
-                        player.InitializeDataTimeout();
                     }
                     else
                     {
