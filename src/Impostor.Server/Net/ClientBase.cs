@@ -29,6 +29,8 @@ namespace Impostor.Server.Net
 
         public string FriendCode { get; set; } = string.Empty;
 
+        public bool HostedGame { get; set; } = false;
+
         public Language Language { get; }
 
         public QuickChatModes ChatMode { get; }
