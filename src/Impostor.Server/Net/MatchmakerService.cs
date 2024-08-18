@@ -17,7 +17,6 @@ namespace Impostor.Server.Net
         private readonly HttpServerConfig _httpServerConfig;
         private readonly Matchmaker _matchmaker;
         private readonly TokenController _tokenController;
-        private readonly EacController.EACFunctions _eACFunctions;
         private Timer _TimerTask;
 
         public MatchmakerService(
@@ -25,15 +24,13 @@ namespace Impostor.Server.Net
             IOptions<ServerConfig> serverConfig,
             IOptions<HttpServerConfig> httpServerConfig,
             Matchmaker matchmaker,
-            TokenController tokenController,
-            EacController.EACFunctions eACFunctions)
+            TokenController tokenController)
         {
             _logger = logger;
             _serverConfig = serverConfig.Value;
             _httpServerConfig = httpServerConfig.Value;
             _matchmaker = matchmaker;
             _tokenController = tokenController;
-            _eACFunctions = eACFunctions;
             _TimerTask = new Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(180));
         }
 
@@ -76,11 +73,6 @@ namespace Impostor.Server.Net
         {
             try
             {
-                if (_httpServerConfig.UseEacCheck)
-                {
-                    _eACFunctions.UpdateEACListFromURLAsync("NikoCat233_Is_Impostor").GetAwaiter().GetResult();  // Update EACList
-                }
-
                 if (_httpServerConfig.UseInnerSlothAuth)
                 {
                     foreach (var tokens in TokenController.AuthClientData)

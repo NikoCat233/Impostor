@@ -120,6 +120,13 @@ namespace Impostor.Server.Net
                 {
                     case MessageFlags.HostGame:
                     {
+                        if (HostedGame)
+                        {
+                            _logger.LogWarning("Client [{0}] {1} tried to host a game while already hosting.", Id, Name);
+                            await DisconnectAsync(DisconnectReason.DuplicateConnectionDetected);
+                            return;
+                        }
+
                         // Read game settings.
                         Message00HostGameC2S.Deserialize(reader, out var gameOptions, out _, out var gameFilterOptions);
 
@@ -138,6 +145,8 @@ namespace Impostor.Server.Net
                             Message00HostGameS2C.Serialize(writer, game.Code);
                             await Connection.SendAsync(writer);
                         }
+
+                        HostedGame = true;
 
                         break;
                     }
