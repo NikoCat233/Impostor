@@ -26,6 +26,4 @@ public class HttpServerConfig
     public ushort ListenPort { get; set; } = 22023;
 
     public bool UseInnerSlothAuth { get; set; } = false;
-
-    public bool UseEacCheck { get; set; } = false;
 }

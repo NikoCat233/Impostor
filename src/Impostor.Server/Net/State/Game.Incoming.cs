@@ -262,12 +262,6 @@ namespace Impostor.Server.Net.State
 
             if (client.Puid != string.Empty)
             {
-                if (_httpServerConfig.UseEacCheck && (_tokenController._eacFunctions.CheckHashPUIDExists(TokenController.HashedPuid(client.Puid)) || _tokenController._eacFunctions.CheckFriendCodeExists(client.FriendCode.ToLower())))
-                {
-                    _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is eac banned previously.");
-                    return GameJoinResult.CreateCustomError(string.Format("[Impostor Anticheat+]\nYou are banned by EAC previously.\n {0}", TokenController.HashedPuid(client.Puid) + " " + client.FriendCode.ToLower()));
-                }
-
                 if (_bannedPuids.Contains(client.Puid))
                 {
                     _logger.LogInformation(Code + " - Player " + client.Name + " (" + client.Id + ") is puid banned previously.");
