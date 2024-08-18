@@ -32,6 +32,11 @@ namespace Impostor.Server.Net.State
 
         public async ValueTask HandleEndGame(IMessageReader message, GameOverReason gameOverReason)
         {
+            if (GameState == GameStates.Ended)
+            {
+                return;
+            }
+
             GameState = GameStates.Ended;
 
             // Broadcast end of the game.

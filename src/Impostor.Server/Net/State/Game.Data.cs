@@ -89,6 +89,7 @@ namespace Impostor.Server.Net.State
                 while (parent.Position < parent.Length)
                 {
                     using var reader = parent.ReadMessage();
+                    var position = reader.Position;
                     var tag = (GameDataTag)reader.Tag;
 
                     if (!sender.IsHost && sender.Game.IsHostAuthoritive && tag != GameDataTag.RpcFlag && tag != GameDataTag.DataFlag)
@@ -104,6 +105,27 @@ namespace Impostor.Server.Net.State
                             if (_allObjectsFast.TryGetValue(netId, out var obj))
                             {
                                 await obj.DeserializeAsync(sender, target, reader, false);
+
+                                if (obj is InnerGameData)
+                                {
+                                    reader.Seek(position);
+
+                                    var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                                    reader.CopyTo(writer);
+                                    writer.EndMessage();
+
+                                    if (toPlayer)
+                                    {
+                                        await SendToAsync(writer, target!.Client.Id);
+                                    }
+                                    else
+                                    {
+                                        await SendToAllExceptAsync(writer, sender.Client.Id);
+                                    }
+
+                                    parent.RemoveMessage(reader);
+                                    break;
+                                }
                             }
                             else
                             {
@@ -127,6 +149,27 @@ namespace Impostor.Server.Net.State
                             else
                             {
                                 _logger.LogWarning("Received RpcFlag for unregistered NetId {0} from client {1}.", netId, sender.Client.Id);
+                            }
+
+                            if (reader.Length > 200)
+                            {
+                                reader.Seek(position);
+
+                                var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                                reader.CopyTo(writer);
+                                writer.EndMessage();
+
+                                if (toPlayer)
+                                {
+                                    await SendToAsync(writer, target!.Client.Id);
+                                }
+                                else
+                                {
+                                    await SendToAllExceptAsync(writer, sender.Client.Id);
+                                }
+
+                                parent.RemoveMessage(reader);
+                                continue;
                             }
 
                             break;
