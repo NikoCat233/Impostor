@@ -111,7 +111,6 @@ namespace Impostor.Server
                     services.Configure<HttpServerConfig>(host.Configuration.GetSection(HttpServerConfig.Section));
 
                     services.AddSingleton<ClientManager>();
-                    services.AddSingleton<EacController.EACFunctions>();
                     services.AddSingleton<TokenController>();
                     services.AddSingleton<IClientManager>(p => p.GetRequiredService<ClientManager>());
 

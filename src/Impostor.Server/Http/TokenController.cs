@@ -28,21 +28,18 @@ public sealed class TokenController : ControllerBase
     private readonly ILogger<TokenController> _logger;
     private readonly AntiCheatConfig _antiCheatConfig;
     private readonly HttpServerConfig _httpServerConfig;
-    public readonly EacController.EACFunctions _eacFunctions;
 
     public static HashSet<UserPayload> AuthClientData = new();
-    private readonly Dictionary<string, int> MmRequestFailure = new();
+    private static readonly Dictionary<string, int> MmRequestFailure = new();
 
     public TokenController(
         ILogger<TokenController> logger,
         IOptions<AntiCheatConfig> antiCheatOptions,
-        IOptions<HttpServerConfig> httpServerOptions,
-        EacController.EACFunctions eacFunctions)
+        IOptions<HttpServerConfig> httpServerOptions)
     {
         _logger = logger;
         _antiCheatConfig = antiCheatOptions.Value;
         _httpServerConfig = httpServerOptions.Value;
-        _eacFunctions = eacFunctions;
     }
 
     /// <summary>
@@ -151,9 +148,7 @@ public sealed class TokenController : ControllerBase
 
                             if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
                             {
-                                _logger.LogWarning("Kick Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
-                                AddMMFailure(ipAddress.ToString());
-                                return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
+                                _logger.LogWarning("Guest Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
                             }
 
                             _logger.LogInformation(ipAddress + " " + HashedPuid(tokenpuid) + " " + friendcode + " " + platformEat);
@@ -203,14 +198,6 @@ public sealed class TokenController : ControllerBase
         {
             _logger.LogInformation("{0} apparently had no account", request.Username);
             return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.NotAuthorized)));
-        }
-
-        if (_httpServerConfig.UseInnerSlothAuth && _httpServerConfig.UseEacCheck
-            && (_eacFunctions.CheckHashPUIDExists(HashedPuid(request.ProductUserId))
-            || _eacFunctions.CheckFriendCodeExists(notLocalFc)))
-        {
-            _logger.LogWarning("{0} ({1}) ({2}) is banned by EAC", request.Username, HashedPuid(request.ProductUserId), ipAddress);
-            return Unauthorized(new MatchmakerResponse(new MatchmakerError(SanctionReasons.CheatingHacking, DateTimeOffset.Parse("2114-5-14"))));
         }
 
         if (!GetUnUsedUserPayLoad(request.ProductUserId, ipAddress, out var matchingUser1))
