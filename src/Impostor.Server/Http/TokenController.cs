@@ -30,7 +30,13 @@ public sealed class TokenController : ControllerBase
     private readonly HttpServerConfig _httpServerConfig;
 
     public static HashSet<UserPayload> AuthClientData = new();
+    private static readonly string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static readonly Dictionary<string, int> MmRequestFailure = new();
+    private static readonly Random Random = new();
+    private static readonly HttpClient HttpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(6), // 设置超时为6秒
+    };
 
     public TokenController(
         ILogger<TokenController> logger,
@@ -40,6 +46,19 @@ public sealed class TokenController : ControllerBase
         _logger = logger;
         _antiCheatConfig = antiCheatOptions.Value;
         _httpServerConfig = httpServerOptions.Value;
+    }
+
+    public static string HashedPuid(string puid2)
+    {
+        if (string.IsNullOrEmpty(puid2))
+        {
+            return string.Empty;
+        }
+
+        var sha256Bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(puid2));
+        var sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", string.Empty).ToLower();
+
+        return $"{sha256Hash.Substring(0, 5)}{sha256Hash.Substring(sha256Hash.Length - 4)}";
     }
 
     /// <summary>
@@ -80,11 +99,6 @@ public sealed class TokenController : ControllerBase
                 return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.InternalNonceFailure)));
             }
         }
-
-        // 后门，阻止外发版本使用树懒验证和EAC检查
-        //_httpServerConfig.UseInnerSlothAuth = false;
-        //_httpServerConfig.UseEacCheck = false;
-        //_antiCheatConfig.ForceAuthOrKick = false;
 
         var notLocalFc = string.Empty;
         bool shouldAuthorize = false;
@@ -148,7 +162,9 @@ public sealed class TokenController : ControllerBase
 
                             if (platformEat.ToLower() == "deviceid" || platformEat == string.Empty)
                             {
-                                _logger.LogWarning("Guest Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
+                                _logger.LogWarning("Got Guest Account / Bad Account {0}({1}) {2} for {3}", request.Username, ipAddress, request.ProductUserId, platformEat);
+                                // AddMMFailure(ipAddress.ToString());
+                                // return Unauthorized(new MatchmakerResponse(new MatchmakerError(DisconnectReason.SelfPlatformLock)));
                             }
 
                             _logger.LogInformation(ipAddress + " " + HashedPuid(tokenpuid) + " " + friendcode + " " + platformEat);
@@ -185,14 +201,12 @@ public sealed class TokenController : ControllerBase
             }
         }
 
-        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        var random = new Random();
         var result = new string(
-            Enumerable.Repeat(chars, 8)
-                      .Select(s => s[random.Next(s.Length)])
+            Enumerable.Repeat(Chars, 8)
+                      .Select(s => s[Random.Next(s.Length)])
                       .ToArray());
 
-        var randomHash = HashedPuid(request.ProductUserId) + result + "NikoCat233";
+        var randomHash = HashedPuid(request.ProductUserId) + result;
 
         if (string.IsNullOrWhiteSpace(request.ProductUserId))
         {
@@ -248,62 +262,31 @@ public sealed class TokenController : ControllerBase
     {
         try
         {
-            // Create a new HttpClient with a timeout of 5 seconds
-            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+            using (var request = new HttpRequestMessage())
             {
-                // Create a new HttpRequestMessage
-                var request = new HttpRequestMessage();
-
-                // Set the method to GET
                 request.Method = HttpMethod.Get;
-
-                // Set the URL
-                var url = "https://backend.innersloth.com/api/user/username";
-                request.RequestUri = new Uri(url);
-
-                // Set the headers
+                request.RequestUri = new Uri("https://backend.innersloth.com/api/user/username");
                 request.Headers.Add("Accept", "application/vnd.api+json");
                 request.Headers.Add("Accept-Encoding", "deflate, gzip");
                 request.Headers.Add("User-Agent", "UnityPlayer/2020.3.45f1 (UnityWebRequest/1.0, libcurl/7.84.0-DEV)");
                 request.Headers.Add("X-Unity-Version", "2020.3.45f1");
                 request.Headers.Add("Authorization", "Bearer " + bearerToken);
 
-                // Send the request
-                var response = await client.SendAsync(request);
+                var response = await HttpClient.SendAsync(request);
 
-                // Check the response status code
-                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                if (response.IsSuccessStatusCode)
                 {
-                    return (DisconnectReason.NotAuthorized, string.Empty);
-                }
-                else if (response.StatusCode == HttpStatusCode.NotFound)
-                {
-                    return (DisconnectReason.Unknown, string.Empty);
-                }
-                else if (response.IsSuccessStatusCode)
-                {
-                    var contentStream = await response.Content.ReadAsStreamAsync();
-                    Stream decompressedStream;
-
-                    if (response.Content.Headers.ContentEncoding.Contains("gzip"))
+                    using var contentStream = await response.Content.ReadAsStreamAsync();
+                    using var decompressedStream = response.Content.Headers.ContentEncoding.Contains("gzip")
+                        ? new GZipStream(contentStream, CompressionMode.Decompress)
+                        : response.Content.Headers.ContentEncoding.Contains("deflate")
+                            ? new DeflateStream(contentStream, CompressionMode.Decompress)
+                            : contentStream;
+                    using var reader = new StreamReader(decompressedStream);
+                    var content = await reader.ReadToEndAsync();
+                    using (var jsonDocument = JsonDocument.Parse(content))
                     {
-                        decompressedStream = new GZipStream(contentStream, CompressionMode.Decompress);
-                    }
-                    else if (response.Content.Headers.ContentEncoding.Contains("deflate"))
-                    {
-                        decompressedStream = new DeflateStream(contentStream, CompressionMode.Decompress);
-                    }
-                    else
-                    {
-                        decompressedStream = contentStream;
-                    }
-
-                    using (var reader = new StreamReader(decompressedStream))
-                    {
-                        var content = await reader.ReadToEndAsync();
-                        var jsonDocument = JsonDocument.Parse(content);
                         var root = jsonDocument.RootElement;
-
                         if (root.TryGetProperty("data", out var dataProperty) &&
                             dataProperty.TryGetProperty("attributes", out var attributesProperty))
                         {
@@ -313,13 +296,20 @@ public sealed class TokenController : ControllerBase
 
                             return (DisconnectReason.Unknown, friendcode);
                         }
-
-                        throw new Exception("Could not extract friendcode from response content.");
+                        else
+                        {
+                            return (DisconnectReason.ServerError, string.Empty);
+                        }
                     }
                 }
                 else
                 {
-                    return (DisconnectReason.ServerError, string.Empty);
+                    return response.StatusCode switch
+                    {
+                        HttpStatusCode.Unauthorized => (DisconnectReason.NotAuthorized, string.Empty),
+                        HttpStatusCode.NotFound => (DisconnectReason.Unknown, string.Empty),
+                        _ => (DisconnectReason.ServerError, string.Empty),
+                    };
                 }
             }
         }
@@ -331,8 +321,6 @@ public sealed class TokenController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex.ToString());
-
-            // Catch any other exceptions
             return (DisconnectReason.ServerError, string.Empty);
         }
     }
@@ -341,61 +329,44 @@ public sealed class TokenController : ControllerBase
     {
         try
         {
-            // JWT is in the format Header.Payload.Signature
-            // Split the JWT to get the Payload
             var parts = jwt.Split('.');
             if (parts.Length != 3)
             {
                 throw new ArgumentException("Invalid JWT");
             }
 
-            // The Payload is Base64Url encoded, decode it
             var payload = parts[1];
             var payloadBytes = Convert.FromBase64String(payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '='));
             var payloadJson = Encoding.UTF8.GetString(payloadBytes);
 
-            // Parse the JSON
-            var jsonDocument = JsonDocument.Parse(payloadJson);
-            var root = jsonDocument.RootElement;
-
-            // Extract the `eat` value and `sub` value
-            string eat = string.Empty;
-            string puid = string.Empty;
-
-            if (root.TryGetProperty("act", out var actProperty) && actProperty.TryGetProperty("eat", out var eatProperty))
+            using (var jsonDocument = JsonDocument.Parse(payloadJson))
             {
-                eat = eatProperty.GetString();
-            }
+                var root = jsonDocument.RootElement;
+                string eat = string.Empty;
+                string puid = string.Empty;
 
-            if (root.TryGetProperty("sub", out var subProperty))
-            {
-                puid = subProperty.GetString();
-            }
+                if (root.TryGetProperty("act", out var actProperty) && actProperty.TryGetProperty("eat", out var eatProperty))
+                {
+                    eat = eatProperty.GetString();
+                }
 
-            if (string.IsNullOrEmpty(eat) || string.IsNullOrEmpty(puid))
-            {
-                throw new Exception("Could not extract `eat` or `sub` from JWT");
-            }
+                if (root.TryGetProperty("sub", out var subProperty))
+                {
+                    puid = subProperty.GetString();
+                }
 
-            return (puid, eat);
+                if (string.IsNullOrEmpty(eat) || string.IsNullOrEmpty(puid))
+                {
+                    throw new Exception("Could not extract `eat` or `sub` from JWT");
+                }
+
+                return (puid, eat);
+            }
         }
         catch
         {
             return (string.Empty, string.Empty);
         }
-    }
-
-    public static string HashedPuid(string puid2)
-    {
-        if (puid2 == null || puid2 == string.Empty)
-        {
-            return string.Empty;
-        }
-
-        var sha256Bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(puid2));
-        var sha256Hash = BitConverter.ToString(sha256Bytes).Replace("-", string.Empty).ToLower();
-
-        return string.Concat(sha256Hash.AsSpan(0, 5), sha256Hash.AsSpan(sha256Hash.Length - 4));
     }
 
     public DisconnectReason CheckMMToken(string bearerToken)
@@ -416,7 +387,7 @@ public sealed class TokenController : ControllerBase
             var json = Encoding.UTF8.GetString(bytes);
 
             // Parse the JSON
-            var jsonDocument = JsonDocument.Parse(json);
+            using var jsonDocument = JsonDocument.Parse(json);
             var root = jsonDocument.RootElement;
 
             // Extract the `Content` object
@@ -558,7 +529,10 @@ public sealed class TokenController : ControllerBase
     /// </summary>
     public sealed class TokenPayload
     {
-        private static readonly DateTime DefaultExpiryDate = new(2012, 12, 21);
+        public TokenPayload()
+        {
+            ExpiresAt = DateTime.UtcNow.AddSeconds(75);
+        }
 
         [JsonPropertyName("Puid")]
         public required string ProductUserId { get; init; }
@@ -567,6 +541,6 @@ public sealed class TokenController : ControllerBase
         public required int ClientVersion { get; init; }
 
         [JsonPropertyName("ExpiresAt")]
-        public DateTime ExpiresAt { get; init; } = DefaultExpiryDate;
+        public DateTime ExpiresAt { get; init; }
     }
 }
