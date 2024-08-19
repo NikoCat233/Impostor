@@ -243,6 +243,22 @@ namespace Impostor.Server.Net.State
                                     await OnSpawnAsync(sender, obj);
                                 }
 
+                                if (toPlayer)
+                                {
+                                    if (objectId == 3)
+                                    {
+                                        reader.Seek(position);
+
+                                        using var writer = StartGameData(target!.Client.Id);
+                                        reader.CopyTo(writer);
+                                        writer.EndMessage();
+                                        await SendToAsync(writer, target!.Client.Id);
+
+                                        parent.RemoveMessage(reader);
+                                        continue;
+                                    }
+                                }
+
                                 continue;
                             }
 
