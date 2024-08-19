@@ -8,14 +8,11 @@
   "HttpServer": {
     "Enabled": true,
     "ListenIp": "0.0.0.0",
-    "ListenPort": 22023,
-    "UseInnerSlothAuth": false,
-    "UseEacCheck":  false
+    "ListenPort": 22023
   },
   "AntiCheat": {
     "Enabled": false,
     "BanIpFromGame": true,
-    "ForceAuthOrKick": false,
     "KickObviousCheat":  true
   }
 }
