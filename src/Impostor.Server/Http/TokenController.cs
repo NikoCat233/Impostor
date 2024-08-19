@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using Impostor.Api.Config;
 using Impostor.Api.Innersloth;
@@ -33,19 +34,19 @@ public sealed class TokenController : ControllerBase
     private static readonly string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static readonly Dictionary<string, int> MmRequestFailure = new();
     private static readonly Random Random = new();
-    private readonly HttpClient _httpClient;
+    private static readonly HttpClient HttpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(6), // 设置超时为6秒
+    };
 
     public TokenController(
         ILogger<TokenController> logger,
         IOptions<AntiCheatConfig> antiCheatOptions,
-        IOptions<HttpServerConfig> httpServerOptions,
-        IHttpClientFactory httpClientFactory)
+        IOptions<HttpServerConfig> httpServerOptions)
     {
         _logger = logger;
         _antiCheatConfig = antiCheatOptions.Value;
         _httpServerConfig = httpServerOptions.Value;
-        _httpClient = httpClientFactory.CreateClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(6);
     }
 
     public static string HashedPuid(string puid2)
@@ -272,7 +273,7 @@ public sealed class TokenController : ControllerBase
                 request.Headers.Add("X-Unity-Version", "2020.3.45f1");
                 request.Headers.Add("Authorization", "Bearer " + bearerToken);
 
-                var response = await _httpClient.SendAsync(request);
+                var response = await HttpClient.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
                 {
