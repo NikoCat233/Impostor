@@ -110,7 +110,7 @@ namespace Impostor.Server.Net.State
                                 {
                                     reader.Seek(position);
 
-                                    var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                                    using var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
                                     reader.CopyTo(writer);
                                     writer.EndMessage();
 
@@ -155,7 +155,7 @@ namespace Impostor.Server.Net.State
                             {
                                 reader.Seek(position);
 
-                                var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
+                                using var writer = StartGameData(toPlayer ? target!.Client.Id : null, MessageType.Unreliable);
                                 reader.CopyTo(writer);
                                 writer.EndMessage();
 
