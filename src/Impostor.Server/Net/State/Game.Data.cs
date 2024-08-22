@@ -105,9 +105,9 @@ namespace Impostor.Server.Net.State
                     using var reader = parent.ReadMessage();
 
                     var position = reader.Position;
-                    _logger.LogTrace("Client {SenderId} sent GameData {Tag}", sender.Client.Id, (GameDataTag)reader.Tag);
+                    _logger.LogTrace("Client {SenderId} sent GameData {Tag}", sender.Client.Id, reader.Tag);
 
-                    switch ((GameDataTag)reader.Tag)
+                    switch (reader.Tag)
                     {
                         case GameDataTag.DataFlag:
                         {
@@ -461,17 +461,6 @@ namespace Impostor.Server.Net.State
                     {
                         // Disconnect handler was probably invoked, cancel the rest.
                         return false;
-                    }
-                }
-
-                // Check for dirty netobjects
-                foreach (var netObject in _allObjectsFast.Values)
-                {
-                    if (netObject.IsDirty && netObject.OwnerId == ServerOwned)
-                    {
-                        _logger.LogTrace("Sending over {Type} {NetId}", netObject.GetType().Name, netObject.NetId);
-                        await SendObjectData(netObject);
-                        netObject.IsDirty = false;
                     }
                 }
 
