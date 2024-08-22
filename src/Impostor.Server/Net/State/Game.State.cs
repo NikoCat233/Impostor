@@ -86,22 +86,11 @@ namespace Impostor.Server.Net.State
                 }
             });
 
-            // Clean up the PlayerInfo if we own it
-            foreach (var playerInfo in GameNet.GameData.Players.Values)
+            // Clean up the PlayerInfo if we own it and we're still in the lobby
+            if (GameState == GameStates.NotStarted)
             {
-                if (playerInfo.ClientId == playerId)
-                {
-                    if (playerInfo.OwnerId == ServerOwned)
-                    {
-                        _logger.LogDebug("Destroying PlayerInfo {nid}", playerInfo.NetId);
-                        GameNet.GameData.RemovePlayer(playerInfo.PlayerId);
-                        RemoveNetObject(playerInfo);
-
-                        await SendObjectDespawn(playerInfo);
-                    }
-
-                    break;
-                }
+                var playerInfo = GameNet.GameData.PlayersByClientId[playerId];
+                await DespawnPlayerInfoAsync(playerInfo);
             }
 
             return true;

@@ -60,7 +60,6 @@ namespace Impostor.Server.Net.Inner.Objects
             using var writer = player.Game.StartRpc(player.NetId, RpcCalls.CompleteTask);
             Rpc01CompleteTask.Serialize(writer, Id);
             await player.Game.FinishRpcAsync(writer);
-            _playerInfo.IsDirty = true;
 
             // Notify plugins.
             await _eventManager.CallAsync(new PlayerCompletedTaskEvent(player.Game, player.Game.GetClientPlayer(player.OwnerId)!, player, this));

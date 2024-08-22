@@ -116,7 +116,7 @@ namespace Impostor.Server.Net.State
         private async ValueTask SendObjectSpawnAsync(InnerNetObject obj, int? targetClientId = null)
         {
             using var writer = StartGameData(targetClientId);
-            writer.StartMessage((byte)GameDataTag.SpawnFlag);
+            writer.StartMessage(GameDataTag.SpawnFlag);
             writer.WritePacked(SpawnableObjectIds[obj.GetType()]);
             writer.WritePacked(obj.OwnerId);
             writer.Write((byte)obj.SpawnFlags);
@@ -135,21 +135,11 @@ namespace Impostor.Server.Net.State
             await FinishGameDataAsync(writer, targetClientId);
         }
 
-        private ValueTask SendObjectDespawn(InnerNetObject obj, int? targetClientId = null)
+        private async ValueTask SendObjectDespawnAsync(InnerNetObject obj, int? targetClientId = null)
         {
             using var writer = StartGameData(targetClientId);
-            writer.StartMessage((byte)GameDataTag.DespawnFlag);
+            writer.StartMessage(GameDataTag.DespawnFlag);
             writer.WritePacked(obj.NetId);
-            writer.EndMessage();
-            return FinishGameDataAsync(writer, targetClientId);
-        }
-
-        private async ValueTask SendObjectData(InnerNetObject obj, int? targetClientId = null)
-        {
-            using var writer = StartGameData(targetClientId);
-            writer.StartMessage((byte)GameDataTag.DataFlag);
-            writer.WritePacked(obj.NetId);
-            await obj.SerializeAsync(writer, false);
             writer.EndMessage();
             await FinishGameDataAsync(writer, targetClientId);
         }

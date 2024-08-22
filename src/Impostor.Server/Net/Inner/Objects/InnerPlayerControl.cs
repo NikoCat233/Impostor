@@ -986,7 +986,6 @@ namespace Impostor.Server.Net.Inner.Objects
             }
 
             PlayerInfo.PlayerLevel = level;
-            PlayerInfo.IsDirty = true;
 
             return true;
         }
@@ -1175,7 +1174,7 @@ namespace Impostor.Server.Net.Inner.Objects
         private async ValueTask<bool> HandleCheckVanish(ClientPlayer sender, float maxDuration)
         {
             // TODO: Check if operation is taking place during lobby/meetings
-            // TODO: Check max duration
+            // TODO: Check that the player unvanished before the maximum duration is reached
             // If the game is host authoritive, the RPC is handled by the host, otherwise by the server
             if (_game.IsHostAuthoritive)
             {

@@ -2,7 +2,7 @@ namespace Impostor.Api.Net.Messages.Rpcs
 {
     public static class Rpc62CheckVanish
     {
-        public static void Serialize(IMessageWriter writer, float maxDuration = 0f)
+        public static void Serialize(IMessageWriter writer, float maxDuration)
         {
             writer.Write(maxDuration);
         }

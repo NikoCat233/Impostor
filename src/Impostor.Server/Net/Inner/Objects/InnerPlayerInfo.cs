@@ -224,8 +224,6 @@ namespace Impostor.Server.Net.Inner.Objects
                 var taskType = (mapTasks != null && mapTasks.ContainsKey(taskTypeId)) ? mapTasks[taskTypeId] : null;
                 Tasks.Add(new TaskInfo(this, _eventManager, taskId++, taskType));
             }
-
-            IsDirty = true;
         }
     }
 }

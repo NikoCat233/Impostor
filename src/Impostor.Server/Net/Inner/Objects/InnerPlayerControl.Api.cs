@@ -22,7 +22,6 @@ namespace Impostor.Server.Net.Inner.Objects
         {
             PlayerInfo.CurrentOutfit.PlayerName = name;
 
-            // TODO check playerinfo ownership
             using var writer = Game.StartRpc(NetId, RpcCalls.SetName);
             writer.Write(name);
             await Game.FinishRpcAsync(writer);
@@ -153,13 +152,14 @@ namespace Impostor.Server.Net.Inner.Objects
         public async ValueTask StartVanishAsync()
         {
             using var writer = Game.StartRpc(NetId, RpcCalls.StartVanish);
+            Rpc63StartVanish.Serialize(writer);
             await Game.FinishRpcAsync(writer);
         }
 
         public async ValueTask StartAppearAsync(bool shouldAnimate)
         {
             using var writer = Game.StartRpc(NetId, RpcCalls.StartAppear);
-            writer.Write(shouldAnimate);
+            Rpc65StartAppear.Serialize(writer, shouldAnimate);
             await Game.FinishRpcAsync(writer);
         }
     }
