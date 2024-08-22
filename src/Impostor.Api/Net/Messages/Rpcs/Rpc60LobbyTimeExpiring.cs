@@ -1,10 +1,8 @@
-using System;
-
 namespace Impostor.Api.Net.Messages.Rpcs
 {
     public static class Rpc60LobbyTimeExpiring
     {
-        public static void Serialize(IMessageWriter writer, int timeRemainingSeconds, bool isExtensionAvailable, int hostId, int extensionId, int extendedTimeSeconds)
+        public static void Serialize(IMessageWriter writer, int timeRemainingSeconds, bool isExtensionAvailable, int hostId = 255, int extensionId = 0, int extendedTimeSeconds = 0)
         {
             writer.WritePacked(timeRemainingSeconds);
             writer.Write(isExtensionAvailable);
@@ -14,7 +12,6 @@ namespace Impostor.Api.Net.Messages.Rpcs
                 writer.WritePacked(hostId);
                 writer.WritePacked(extensionId);
                 writer.WritePacked(extendedTimeSeconds);
-                throw new NotImplementedException();
             }
         }
 
@@ -28,7 +25,6 @@ namespace Impostor.Api.Net.Messages.Rpcs
                 hostId = reader.ReadPackedInt32();
                 extensionId = reader.ReadPackedInt32();
                 extendedTimeSeconds = reader.ReadPackedInt32();
-                throw new NotImplementedException();
 
                 // extensionId is not used in vanilla code and there is no enum matching this "extension Id" in code.
             }

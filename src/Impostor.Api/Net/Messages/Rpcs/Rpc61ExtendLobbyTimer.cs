@@ -1,5 +1,3 @@
-using System;
-
 namespace Impostor.Api.Net.Messages.Rpcs
 {
     public static class Rpc61ExtendLobbyTimer
@@ -25,7 +23,6 @@ namespace Impostor.Api.Net.Messages.Rpcs
 
                 // The game currently only logs the failure reason and dont act on it.
                 // ExtensionFailureReasons enum exists in code but is not used, not adding it here until InnerSloth put real use to it.
-                throw new NotImplementedException();
             }
             else
             {
