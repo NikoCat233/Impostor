@@ -60,7 +60,7 @@ namespace Impostor.Server.Net.State
             return default;
         }
 
-        public async ValueTask<bool> HandleGameDataAsync(IMessageReader parent, ClientPlayer sender, bool toPlayer)
+        public async ValueTask<bool> HandleGameDataAsync(IMessageReader parent, ClientPlayer sender, bool toPlayer, MessageType messageType)
         {
             try
             {
@@ -139,7 +139,7 @@ namespace Impostor.Server.Net.State
                                 _logger.LogWarning("Received RpcFlag for unregistered NetId {0}.", netId);
                             }
 
-                            if (reader.Length > 200)
+                            if (reader.Length > 256 && messageType is MessageType.Reliable)
                             {
                                 reader.Seek(position);
 
