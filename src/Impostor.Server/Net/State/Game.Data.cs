@@ -80,7 +80,7 @@ namespace Impostor.Server.Net.State
             return default;
         }
 
-        public async ValueTask<bool> HandleGameDataAsync(IMessageReader parent, ClientPlayer sender, bool toPlayer)
+        public async ValueTask<bool> HandleGameDataAsync(IMessageReader parent, ClientPlayer sender, bool toPlayer, MessageType messageType)
         {
             try
             {
@@ -165,7 +165,7 @@ namespace Impostor.Server.Net.State
                                     continue;
                                 }
 
-                                if (reader.Length > 200) // Normally a rpc should be within 100. gonna send it as none so wont cause huge packets.
+                                if (reader.Length > 256 && messageType is MessageType.Reliable) // Normally a rpc should be within 100. gonna send it as none so wont cause huge packets.
                                 {
                                     reader.Seek(position);
 
