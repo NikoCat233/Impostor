@@ -3,6 +3,9 @@
 [![Discord](https://img.shields.io/badge/Discord-chat-blue?style=flat-square)](https://discord.gg/Mk3w6Tb)
 [![CI](https://github.com/Impostor/Impostor/workflows/CI/badge.svg)](https://github.com/Impostor/Impostor/actions)
 
+This fork is coded by NikoCat233, which includes many useful fixes and improvements of the original impostor server.
+You must reference NikoCat233, this repo, (and probably https://au.niko233.me) if you are porting codes & features into your own public game server.
+
 Impostor is the first working **Among Us** private server, written in C#.
 
 As Among Us is actively updated, you may want to use the latest build from the master branch if you want to play on the latest version of Among Us that supported by Impostor.
