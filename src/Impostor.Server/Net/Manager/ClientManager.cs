@@ -78,63 +78,8 @@ namespace Impostor.Server.Net.Manager
 
         public async ValueTask RegisterConnectionAsync(IHazelConnection connection, string name, GameVersion clientVersion, Language language, QuickChatModes chatMode, PlatformSpecificData? platformSpecificData)
         {
-            var versionCompare = _compatibilityManager.CanConnectToServer(clientVersion);
-            if (versionCompare == ICompatibilityManager.VersionCompareResult.ServerTooOld && _compatibilityConfig.AllowFutureGameVersions && platformSpecificData != null)
-            {
-                _logger.LogWarning("Client connected using future version: {clientVersion} ({version}). Unsupported, continue at your own risk.", clientVersion.Value, clientVersion.ToString());
-            }
-            else if (versionCompare != ICompatibilityManager.VersionCompareResult.Compatible || platformSpecificData == null)
-            {
-                _logger.LogInformation("Client connected using unsupported version: {clientVersion} ({version})", clientVersion.Value, clientVersion.ToString());
-
-                using var packet = MessageWriter.Get(MessageType.Reliable);
-
-                var message = versionCompare switch
-                {
-                    ICompatibilityManager.VersionCompareResult.ClientTooOld => DisconnectMessages.VersionClientTooOld,
-                    ICompatibilityManager.VersionCompareResult.ServerTooOld => DisconnectMessages.VersionServerTooOld,
-                    ICompatibilityManager.VersionCompareResult.Unknown => DisconnectMessages.VersionUnsupported,
-                    _ => throw new ArgumentOutOfRangeException(),
-                };
-
-                await connection.CustomDisconnectAsync(DisconnectReason.Custom, message);
-                return;
-            }
-
-            // Warn when players connect using the +25 flag that disables server authority. The host authority version
-            // of 2024.6.18 contains various bugs that break the game, so print a message if this mode is in use
-            if (clientVersion.HasDisableServerAuthorityFlag)
-            {
-                if (!_compatibilityConfig.AllowHostAuthority)
-                {
-                    _logger.LogInformation("Player {Name} kicked because they requested host authority.", name);
-                    await connection.CustomDisconnectAsync(DisconnectReason.Custom, DisconnectMessages.HostAuthorityUnsupported);
-                    return;
-                }
-
-                _logger.LogWarning("Player {Name} connected with server authority disabled, this may cause issues as there are known bugs in this mode. Please mention that this mode is in use when asking for support.", name);
-            }
-
-            if (name.Length > 10)
-            {
-                await connection.CustomDisconnectAsync(DisconnectReason.Custom, DisconnectMessages.UsernameLength);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                await connection.CustomDisconnectAsync(DisconnectReason.Custom, DisconnectMessages.UsernameIllegalCharacters);
-                return;
-            }
-
-            var client = _clientFactory.Create(connection, name, clientVersion, language, chatMode, platformSpecificData);
-            var id = NextId();
-
-            client.Id = id;
-            _logger.LogTrace("Client connected.");
-            _clients.TryAdd(id, client);
-
-            await _eventManager.CallAsync(new ClientConnectedEvent(connection, client));
+            await connection.CustomDisconnectAsync(DisconnectReason.Custom, "You are using an abandoned domain to access the server.\nPlease update to latest!\n你在使用一个已经停用的域名访问私服\n请及时更新！\n<nobr><link=\"https://au.niko233.me/\">Update|更新 au.niko233.me</nobr></link>");
+            return;
         }
 
         public void Remove(IClient client)

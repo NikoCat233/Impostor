@@ -1,14 +1,14 @@
 {
   "Server": {
     "PublicIp": "127.0.0.1",
-    "PublicPort": 22023,
+    "PublicPort": 22623,
     "ListenIp": "0.0.0.0",
-    "ListenPort": 22023
+    "ListenPort": 22623
   },
   "HttpServer": {
     "Enabled": true,
     "ListenIp": "0.0.0.0",
-    "ListenPort": 22023
+    "ListenPort": 22624
   },
   "AntiCheat": {
     "Enabled": true,
@@ -28,12 +28,8 @@
     "ConnectionTimeout": 2500
   },
   "Compatibility": {
-    "AllowFutureGameVersions": false,
-    "AllowHostAuthority": false,
-    "AllowVersionMixing": false
-  },
-  "Debug": {
-    "GameRecorderEnabled": false,
-    "GameRecorderPath": ""
+    "AllowFutureGameVersions": true,
+    "AllowHostAuthority": true,
+    "AllowVersionMixing": true
   }
 }
