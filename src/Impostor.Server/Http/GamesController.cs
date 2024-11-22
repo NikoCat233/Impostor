@@ -24,6 +24,7 @@ public sealed class GamesController : ControllerBase
     private readonly IGameManager _gameManager;
     private readonly ListingManager _listingManager;
     private readonly HostServer _hostServer;
+    private readonly uint _ip;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GamesController"/> class.
@@ -37,6 +38,7 @@ public sealed class GamesController : ControllerBase
         _listingManager = listingManager;
         var config = serverConfig.Value;
         _hostServer = HostServer.From(IPAddress.Parse(config.ResolvePublicIp()), config.PublicPort);
+        _ip = ConvertAddressToNumber(IPAddress.Parse(config.ResolvePublicIp()));
     }
 
     /// <summary>
@@ -63,8 +65,22 @@ public sealed class GamesController : ControllerBase
 
         var clientVersion = new GameVersion(token.Content.ClientVersion);
 
-        var listings = _listingManager.FindListings(HttpContext, mapId, numImpostors, lang, clientVersion);
-        return Ok(listings.Select(GameListing.From));
+        var deadlisting = new GameListing
+        {
+            Ip = _ip,
+            Port = _hostServer.Port,
+            GameId = 114514,
+            PlayerCount = 114,
+            HostName = "Domain Outdated",
+            HostPlatformName = "test",
+            Platform = Platforms.Unknown,
+            Age = 0,
+            MaxPlayers = 514,
+            NumImpostors = 1,
+            MapId = MapTypes.Skeld,
+            Language = GameKeywords.English,
+        };
+        return Ok(deadlisting);
     }
 
     /// <summary>
@@ -75,16 +91,7 @@ public sealed class GamesController : ControllerBase
     [HttpPost]
     public IActionResult Post(int gameId)
     {
-        var code = new GameCode(gameId);
-        var game = _gameManager.Find(code);
-
-        // If the game was not found, print an error message.
-        if (game == null)
-        {
-            return NotFound(new MatchmakerResponse(new MatchmakerError(DisconnectReason.GameNotFound)));
-        }
-
-        return Ok(HostServer.From(game.PublicIp));
+        return Ok(_hostServer);
     }
 
     /// <summary>
