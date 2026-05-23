@@ -74,6 +74,12 @@ namespace Impostor.Server.Net
                 CheatCategory.Ownership => _antiCheatConfig.EnableOwnershipChecks,
                 CheatCategory.Role => _antiCheatConfig.EnableRoleChecks,
                 CheatCategory.Target => _antiCheatConfig.EnableTargetChecks,
+                CheatCategory.HostOnlyExtension => _antiCheatConfig.AllowHostOnlyExtensions switch {
+                    CheatingHostMode.Always => false,
+                    CheatingHostMode.IfRequested => !GameVersion.HasDisableServerAuthorityFlag,
+                    CheatingHostMode.Never => true,
+                    _ => true,
+                },
                 CheatCategory.Other => true,
                 _ => LogUnknownCategory(category),
             };
@@ -194,7 +200,7 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.StartGame:
                 {
-                    if (!IsPacketAllowed(reader, true))
+                    if (!IsPacketAllowed(reader, true, flag))
                     {
                         return;
                     }
@@ -209,7 +215,7 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.RemovePlayer:
                 {
-                    if (!IsPacketAllowed(reader, true))
+                    if (!IsPacketAllowed(reader, true, flag))
                     {
                         return;
                     }
@@ -226,7 +232,7 @@ namespace Impostor.Server.Net
                 case MessageFlags.GameData:
                 case MessageFlags.GameDataTo:
                 {
-                    if (!IsPacketAllowed(reader, false))
+                    if (!IsPacketAllowed(reader, false, flag))
                     {
                         return;
                     }
@@ -261,7 +267,17 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.PackedGameDataTo:
                 {
-                    if (!IsPackedGameDataToAllowed(reader))
+                    // We're limiting this to hosts right now. If you have a use case for this for
+                    // players to use this feature, we're open to changing this.
+                    if (!IsPacketAllowed(reader, true, flag))
+                    {
+                        return;
+                    }
+
+                    if (await ReportCheatAsync(
+                        new CheatContext(MessageFlags.FlagToString(flag)),
+                        CheatCategory.HostOnlyExtension,
+                        "Client sent a PackedGameDataTo message"))
                     {
                         return;
                     }
@@ -302,7 +318,7 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.EndGame:
                 {
-                    if (!IsPacketAllowed(reader, true))
+                    if (!IsPacketAllowed(reader, true, flag))
                     {
                         return;
                     }
@@ -317,7 +333,7 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.AlterGame:
                 {
-                    if (!IsPacketAllowed(reader, true))
+                    if (!IsPacketAllowed(reader, true, flag))
                     {
                         return;
                     }
@@ -338,7 +354,7 @@ namespace Impostor.Server.Net
 
                 case MessageFlags.KickPlayer:
                 {
-                    if (!IsPacketAllowed(reader, true))
+                    if (!IsPacketAllowed(reader, true, flag))
                     {
                         return;
                     }
@@ -419,7 +435,7 @@ namespace Impostor.Server.Net
             await _gameManager.OnClientDisconnectAsync(this);
         }
 
-        private bool IsPacketAllowed(IMessageReader message, bool hostOnly)
+        private bool IsPacketAllowed(IMessageReader message, bool hostOnly, byte flag)
         {
             if (Player == null)
             {
@@ -442,34 +458,15 @@ namespace Impostor.Server.Net
                     return true;
                 }
 
-                _logger.LogWarning("[{0}] Client sent packet only allowed by the host ({1}).", Id, game.HostId);
+                _logger.LogWarning(
+                    "[{0}] Client sent packet {1} only allowed by the host ({2}).",
+                    Id,
+                    MessageFlags.FlagToString(flag),
+                    game.HostId);
                 return false;
             }
 
             return true;
-        }
-
-        private bool IsPackedGameDataToAllowed(IMessageReader message)
-        {
-            if (Player == null)
-            {
-                return false;
-            }
-
-            var game = Player.Game;
-
-            if (message.ReadPackedInt32() != game.Code)
-            {
-                return false;
-            }
-
-            if (game.HostId == Id)
-            {
-                return true;
-            }
-
-            _logger.LogWarning("[{0}] Client sent PackedGameDataTo only allowed by the host ({1}).", Id, game.HostId);
-            return false;
         }
 
         /// <summary>

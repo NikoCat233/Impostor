@@ -10,6 +10,8 @@ namespace Impostor.Api.Config
 
         public CheatingHostMode AllowCheatingHosts { get; set; } = CheatingHostMode.Never;
 
+        public CheatingHostMode AllowHostOnlyExtensions { get; set; } = CheatingHostMode.IfRequested;
+
         public bool EnableGameFlowChecks { get; set; } = true;
 
         public bool EnableMustBeHostChecks { get; set; } = true;

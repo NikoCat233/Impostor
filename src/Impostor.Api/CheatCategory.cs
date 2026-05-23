@@ -5,6 +5,9 @@ public enum CheatCategory
     /// <summary>A packet used a part of the network protocol that is unknown to Impostor, like a custom RPC.</summary>
     ProtocolExtension,
 
+    /// <summary>A host-only mod extension is used outside of host-authoritive mode.</summary>
+    HostOnlyExtension,
+
     /// <summary>A packet was sent at an inappropriate moment.</summary>
     GameFlow,
 
