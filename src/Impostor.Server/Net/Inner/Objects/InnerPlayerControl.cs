@@ -108,7 +108,7 @@ namespace Impostor.Server.Net.Inner.Objects
 
         public override async ValueTask<bool> HandleRpcAsync(ClientPlayer sender, ClientPlayer? target, RpcCalls call, IMessageReader reader, MessageType messageType)
         {
-            if (!await ValidateReliable(call, sender, messageType))
+            if (call != RpcCalls.PlayAnimation && !await ValidateReliable(call, sender, messageType))
             {
                 return false;
             }

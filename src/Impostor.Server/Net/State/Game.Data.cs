@@ -136,6 +136,14 @@ namespace Impostor.Server.Net.State
 
                     case GameDataTag.SpawnFlag:
                     {
+                        if (messageType != MessageType.Reliable)
+                        {
+                            if (await sender.Client.ReportCheatAsync(new CheatContext(nameof(GameDataTag.SpawnFlag)), CheatCategory.ProtocolExtension, "Client sent SpawnFlag using an unreliable message."))
+                            {
+                                return false;
+                            }
+                        }
+
                         // Only the host is allowed to spawn objects.
                         if (!sender.IsHost)
                         {
