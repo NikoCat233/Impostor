@@ -76,7 +76,7 @@ namespace Impostor.Server.Net.State
             return default;
         }
 
-        public async ValueTask<bool> HandleGameDataAsync(IMessageReader parent, ClientPlayer sender, bool toPlayer)
+        public async ValueTask<bool> HandleGameDataAsync(IMessageReader parent, ClientPlayer sender, bool toPlayer, MessageType messageType)
         {
             // Find target player.
             ClientPlayer? target = null;
@@ -105,7 +105,7 @@ namespace Impostor.Server.Net.State
                         var netId = reader.ReadPackedUInt32();
                         if (_allObjects.TryGetValue(netId, out var obj))
                         {
-                            await obj.DeserializeAsync(sender, target, reader, false);
+                            await obj.DeserializeAsync(sender, target, reader, false, messageType);
                         }
                         else
                         {
@@ -120,7 +120,7 @@ namespace Impostor.Server.Net.State
                         var netId = reader.ReadPackedUInt32();
                         if (_allObjects.TryGetValue(netId, out var obj))
                         {
-                            if (!await obj.HandleRpcAsync(sender, target, (RpcCalls)reader.ReadByte(), reader))
+                            if (!await obj.HandleRpcAsync(sender, target, (RpcCalls)reader.ReadByte(), reader, messageType))
                             {
                                 parent.RemoveMessage(reader);
                                 continue;
@@ -196,7 +196,7 @@ namespace Impostor.Server.Net.State
                                 using var readerSub = reader.ReadMessage();
                                 if (readerSub.Length > 0)
                                 {
-                                    await obj.DeserializeAsync(sender, target, readerSub, true);
+                                    await obj.DeserializeAsync(sender, target, readerSub, true, messageType);
                                 }
 
                                 await OnSpawnAsync(sender, obj);
