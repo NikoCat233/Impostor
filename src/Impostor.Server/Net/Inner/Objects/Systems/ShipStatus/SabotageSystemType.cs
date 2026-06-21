@@ -48,6 +48,16 @@ namespace Impostor.Server.Net.Inner.Objects.Systems.ShipStatus
                     _updateSystem(playerControl, systemType, 0x80);
                     break;
                 case SystemTypes.Electrical:
+                    var value = (byte)4;
+                    for (var i = 0; i < 5; i++)
+                    {
+                        if (Random.Shared.Next(2) == 0)
+                        {
+                            value |= (byte)(1 << i);
+                        }
+                    }
+
+                    _updateSystem(playerControl, systemType, (byte)(value | 0x80));
                     break;
                 case SystemTypes.MushroomMixupSabotage:
                     _updateSystem(playerControl, systemType, 1);

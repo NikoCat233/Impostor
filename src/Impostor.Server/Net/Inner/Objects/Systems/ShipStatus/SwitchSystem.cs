@@ -28,7 +28,12 @@ namespace Impostor.Server.Net.Inner.Objects.Systems.ShipStatus
 
         public void UpdateSystem(IInnerPlayerControl? playerControl, IMessageReader reader)
         {
-            var value = reader.ReadByte();
+            UpdateSystem(playerControl, reader.ReadByte());
+        }
+
+        internal void UpdateSystem(IInnerPlayerControl? playerControl, byte amount)
+        {
+            var value = amount;
             if ((value & 0x80) != 0)
             {
                 ActualSwitches ^= (byte)(value & 0x1f);

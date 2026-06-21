@@ -72,7 +72,12 @@ namespace Impostor.Server.Net.Inner.Objects.Systems.ShipStatus
 
         public void UpdateSystem(IInnerPlayerControl? playerControl, IMessageReader reader)
         {
-            var value = reader.ReadByte();
+            UpdateSystem(playerControl, reader.ReadByte());
+        }
+
+        internal void UpdateSystem(IInnerPlayerControl? playerControl, byte amount)
+        {
+            var value = amount;
             var consoleId = (byte)(value & 3);
 
             if (value == 0x80 && !IsActive)

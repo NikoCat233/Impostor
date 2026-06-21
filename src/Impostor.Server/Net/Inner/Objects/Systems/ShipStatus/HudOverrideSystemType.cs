@@ -18,7 +18,12 @@ namespace Impostor.Server.Net.Inner.Objects.Systems.ShipStatus
 
         public void UpdateSystem(IInnerPlayerControl? playerControl, IMessageReader reader)
         {
-            IsActive = (reader.ReadByte() & 0x80) != 0;
+            UpdateSystem(playerControl, reader.ReadByte());
+        }
+
+        internal void UpdateSystem(IInnerPlayerControl? playerControl, byte amount)
+        {
+            IsActive = (amount & 0x80) != 0;
         }
     }
 }

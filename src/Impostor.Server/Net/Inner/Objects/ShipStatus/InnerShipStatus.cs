@@ -154,10 +154,34 @@ namespace Impostor.Server.Net.Inner.Objects.ShipStatus
 
         protected void UpdateSystem(IInnerPlayerControl? playerControl, SystemTypes systemType, byte amount)
         {
-            if (_systems.TryGetValue(systemType, out var system))
+            if (!_systems.TryGetValue(systemType, out var system))
             {
-                using var reader = new MemoryMessageReader(new[] { amount });
-                system.UpdateSystem(playerControl, reader);
+                return;
+            }
+
+            switch (system)
+            {
+                case SwitchSystem switchSystem:
+                    switchSystem.UpdateSystem(playerControl, amount);
+                    break;
+                case ReactorSystemType reactorSystem:
+                    reactorSystem.UpdateSystem(playerControl, amount);
+                    break;
+                case LifeSuppSystemType lifeSuppSystem:
+                    lifeSuppSystem.UpdateSystem(playerControl, amount);
+                    break;
+                case HudOverrideSystemType hudOverrideSystem:
+                    hudOverrideSystem.UpdateSystem(playerControl, amount);
+                    break;
+                case HqHudSystemType hqHudSystem:
+                    hqHudSystem.UpdateSystem(playerControl, amount);
+                    break;
+                case HeliSabotageSystemType heliSabotageSystem:
+                    heliSabotageSystem.UpdateSystem(playerControl, amount);
+                    break;
+                case MushroomMixupSabotageSystemType mushroomMixupSabotageSystem:
+                    mushroomMixupSabotageSystem.UpdateSystem(playerControl, amount);
+                    break;
             }
         }
 

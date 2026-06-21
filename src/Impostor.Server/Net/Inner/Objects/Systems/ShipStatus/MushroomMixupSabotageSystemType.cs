@@ -54,7 +54,12 @@ public class MushroomMixupSabotageSystemType : ISystemType, IActivatable
 
     public void UpdateSystem(IInnerPlayerControl? playerControl, IMessageReader reader)
     {
-        var operation = reader.ReadByte();
+        UpdateSystem(playerControl, reader.ReadByte());
+    }
+
+    internal void UpdateSystem(IInnerPlayerControl? playerControl, byte amount)
+    {
+        var operation = amount;
         if (operation == 1)
         {
             _currentMixups.Clear();
