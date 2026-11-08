@@ -72,15 +72,11 @@ public static class GameOptionsFactory
         {
             case GameModes.Normal:
             case GameModes.NormalFools:
-                var normalOptions = (NormalGameOptions)gameOptions;
-                normalOptions.Deserialize(optionsReader);
-                normalOptions.GameMode = gameMode;
+                ((NormalGameOptions)gameOptions).Deserialize(optionsReader);
                 break;
             case GameModes.HideNSeek:
             case GameModes.SeekFools:
-                var hideNSeekOptions = (HideNSeekGameOptions)gameOptions;
-                hideNSeekOptions.Deserialize(optionsReader);
-                hideNSeekOptions.GameMode = gameMode;
+                ((HideNSeekGameOptions)gameOptions).Deserialize(optionsReader);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(gameMode), gameMode, null);

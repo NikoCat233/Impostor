@@ -45,7 +45,7 @@ public sealed class GameOptionsFactoryTests
 
     [Theory]
     [MemberData(nameof(ModularGameModes))]
-    public void DeserializeIntoPreservesGameModeChanges(byte version, GameModes gameMode)
+    public void DeserializeIntoPreservesOriginalGameMode(byte version, GameModes gameMode)
     {
         var services = new ServiceCollection();
         services.AddHazel();
@@ -60,16 +60,17 @@ public sealed class GameOptionsFactoryTests
         };
         reader.Update(CreatePayload(version, previousMode));
         var options = GameOptionsFactory.Deserialize(reader);
-        var payload = CreatePayload(version, gameMode);
+        var payload = CreatePayload(version, gameMode, 12);
         reader.Update(payload);
 
         GameOptionsFactory.DeserializeInto(reader, options);
 
-        Assert.Equal(gameMode, options.GameMode);
+        Assert.Equal(previousMode, options.GameMode);
         Assert.Equal(version, options.Version);
+        Assert.Equal(12, options.MaxPlayers);
         using var writer = MessageWriter.Get(MessageType.Unreliable);
         GameOptionsFactory.Serialize(writer, options);
-        Assert.Equal(payload, writer.ToByteArray(false));
+        Assert.Equal(CreatePayload(version, previousMode, 12), writer.ToByteArray(false));
     }
 
     [Fact]
@@ -79,11 +80,12 @@ public sealed class GameOptionsFactoryTests
         Assert.Equal(GameModes.HideNSeek, new HideNSeekGameOptions().GameMode);
     }
 
-    private static byte[] CreatePayload(byte version, GameModes gameMode)
+    private static byte[] CreatePayload(byte version, GameModes gameMode, byte maxPlayers = 10)
     {
         IGameOptions options = gameMode is GameModes.Normal or GameModes.NormalFools
             ? new NormalGameOptions(version)
             : new HideNSeekGameOptions(version);
+        options.MaxPlayers = maxPlayers;
         using var writer = MessageWriter.Get(MessageType.Unreliable);
         writer.WritePacked(0);
         writer.Write(version);
